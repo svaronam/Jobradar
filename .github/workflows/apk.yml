@@ -12,18 +12,8 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
-      - name: Preparar la clave de firma (GitHub Secrets)
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-        run: |
-          if [ -z "$KEYSTORE_BASE64" ]; then echo "::error::Falta el secreto KEYSTORE_BASE64. Ver INSTALACION.md"; exit 1; fi
-          mkdir -p "$(dirname "$GITHUB_WORKSPACE/android/app/keystore/jobradar.jks")"
-          echo "$KEYSTORE_BASE64" | base64 -d > "$GITHUB_WORKSPACE/android/app/keystore/jobradar.jks"
-
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -33,8 +23,31 @@ jobs:
         with:
           gradle-version: "8.9"
 
+      # Con los secretos KEYSTORE_BASE64 y KEYSTORE_PASSWORD, la APK va firmada siempre con la misma clave y cada
+      # versión se instala encima de la anterior. Sin ellos se firma con una clave provisional (compila igual,
+      # pero para instalar la siguiente habrá que desinstalar la anterior). Ver INSTALACION.md.
+      - name: Preparar la clave de firma
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/android/app/keystore"
+          KS="$GITHUB_WORKSPACE/android/app/keystore/jobradar.jks"
+          if [ -n "$KEYSTORE_BASE64" ] && [ -n "$KEYSTORE_PASSWORD" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$KS"
+            echo "FIRMA_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+            echo "Firma fija desde GitHub Secrets"
+          else
+            echo "::warning::Sin los secretos KEYSTORE_BASE64/KEYSTORE_PASSWORD: APK firmada con una clave provisional. Para actualizar sin desinstalar, añádelos (INSTALACION.md)."
+            keytool -genkeypair -keystore "$KS" -alias jobradar -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass jobradar-provisional -keypass jobradar-provisional -dname "CN=JobRadar provisional" -noprompt
+            echo "FIRMA_PASSWORD=jobradar-provisional" >> "$GITHUB_ENV"
+          fi
+
       - name: Compilar APK
         working-directory: android
+        env:
+          KEYSTORE_PASSWORD: ${{ env.FIRMA_PASSWORD }}
         run: gradle assembleRelease --no-daemon --stacktrace
 
       - name: Renombrar
