@@ -252,6 +252,14 @@ def servir(db, cfg):
     except Exception:  # noqa: BLE001
         log.exception("No se pudieron repuntuar las ofertas")
     threading.Thread(target=programador, args=(db, cfg), daemon=True).start()
+
+    def logos():
+        time.sleep(90)  # después de la posible pasada de arranque
+        try:
+            scan.completar_logos(db, cfg)
+        except Exception:  # noqa: BLE001
+            log.exception("No se pudieron completar los logos")
+    threading.Thread(target=logos, daemon=True).start()
     srv = ThreadingHTTPServer((cfg["host"], int(cfg["puerto"])), make_handler(db, cfg))
     log.info("JobRadar %s escuchando en http://%s:%s", VERSION, cfg["host"], cfg["puerto"])
     srv.serve_forever()

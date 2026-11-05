@@ -170,6 +170,13 @@ class DB:
                           (empresa,)).fetchone()
             return r["logo"] if r else None
 
+    def faltan_logos(self, limite=80):
+        """Ofertas visibles sin logo, primero las mejores."""
+        with self._c() as c:
+            return [dict(r) for r in c.execute(
+                "SELECT id, uid, empresa, logo_url FROM ofertas WHERE (logo IS NULL OR logo='') AND nivel!='filtrada' "
+                "AND estado!='descartada' ORDER BY score DESC LIMIT ?", (limite,))]
+
     def sin_logo(self, uid):
         """id de una oferta ya guardada que aún no tiene logo (para completarlo al volver a verla)."""
         with self._c() as c:

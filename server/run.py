@@ -5,6 +5,7 @@
   python3 run.py pasada [--semana]         pasada manual (--semana: ofertas de los últimos 7 días)
   python3 run.py probar ["palabras"]       enseña lo que ve en LinkedIn y cómo lo puntuaría, sin guardar nada
   python3 run.py cv <id_oferta>            vuelve a generar el CV adaptado de una oferta
+  python3 run.py logos                     pone el logo a las ofertas guardadas que no lo tienen
   python3 run.py demo                      mete ofertas de ejemplo para ver la web/app sin esperar
 """
 import argparse
@@ -31,6 +32,7 @@ def main():
     c = sub.add_parser("cv")
     c.add_argument("id", type=int)
     sub.add_parser("demo")
+    sub.add_parser("logos")
     a = ap.parse_args()
 
     cfg = config.cargar(BASE)
@@ -49,6 +51,9 @@ def main():
         print(cv.adaptar(db, cfg, a.id))
     elif a.cmd == "demo":
         demo(db, cfg)
+    elif a.cmd == "logos":
+        n = scan.completar_logos(db, cfg, limite=500, salida=print)
+        print(f"\n{n} ofertas con logo. Si salen todas sin logo, pásame data/debug/detalle_sin_logo.html")
 
 
 def probar(cfg, palabras, n_detalle):

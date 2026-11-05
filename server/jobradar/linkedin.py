@@ -169,4 +169,7 @@ def detalle(job_id, debug_dir=None):
     if debug_dir and not d["descripcion"]:
         with open(os.path.join(debug_dir, f"detalle_{job_id}.html"), "w", encoding="utf-8") as f:
             f.write(html)
+    if debug_dir and not d["logo_url"] and not os.path.exists(os.path.join(debug_dir, "detalle_sin_logo.html")):
+        with open(os.path.join(debug_dir, "detalle_sin_logo.html"), "w", encoding="utf-8") as f:
+            f.write(html)  # para ver dónde pone LinkedIn el logo si algún día cambia
     return d

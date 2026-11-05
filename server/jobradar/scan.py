@@ -171,3 +171,36 @@ def _salud(db, res):
                                       "ha cambiado su página: si se repite, pásame server/data/debug/lista_vacia.html.")
     if res["error"] and not res["error"].startswith("LinkedIn ha limitado"):
         db.add_alerta(f"error:{hoy}", f"La pasada ha fallado: {res['error'][:160]}")
+
+
+def completar_logos(db, cfg, limite=80, salida=None):
+    """Pone logo a las ofertas guardadas que no lo tienen: primero reutiliza el de la misma empresa, si no
+    usa la URL ya conocida y, como último recurso, abre el detalle en LinkedIn (una petición, con pausa)."""
+    hechos, pedidas = 0, 0
+    for o in db.faltan_logos(limite):
+        if estado["en_curso"]:
+            break  # que no coincida con una pasada
+        archivo = db.logo_de_empresa(o["empresa"]) if o["empresa"] else None
+        if archivo:
+            db.actualizar(o["id"], logo=archivo)
+        else:
+            url = o.get("logo_url")
+            if not url and o["uid"].startswith("li:"):
+                try:
+                    d = linkedin.detalle(o["uid"][3:], cfg["data_dir"] + "/debug") or {}
+                except Bloqueado:
+                    log.warning("LinkedIn limita: dejo los logos para luego")
+                    break
+                except Exception:  # noqa: BLE001
+                    d = {}
+                pedidas += 1
+                url = d.get("logo_url")
+                util.pausa(cfg)
+            if url:
+                guardar_logo(db, cfg, o["id"], o["empresa"], url)
+        ok = bool((db.oferta(o["id"]) or {}).get("logo"))
+        hechos += ok
+        if salida:
+            salida(f"  {'✓' if ok else '·'} {o['empresa'][:30]:30} {'' if ok else 'sin logo en LinkedIn'}")
+    log.info("Logos completados: %d (peticiones a LinkedIn: %d)", hechos, pedidas)
+    return hechos
