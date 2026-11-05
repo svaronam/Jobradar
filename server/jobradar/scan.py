@@ -9,7 +9,8 @@ from . import cv, linkedin, puntuar, util
 from .util import Bloqueado, norm
 
 log = logging.getLogger("jobradar")
-estado = {"en_curso": False, "inicio": None, "fase": "", "hechas": 0, "total": 0, "ultimo": None}
+estado = {"en_curso": False, "inicio": None, "fase": "", "hechas": 0, "total": 0, "ultimo": None, "tipo": "",
+          "rapida_pausada_hasta": 0}
 _lock = threading.Lock()
 
 
@@ -26,23 +27,44 @@ def _tpr(db):
     return f"r{min(604800, max(86400, segundos))}"
 
 
-def pasada(db, cfg, tpr=None):
+def palabras_or(palabras):
+    """Todas las palabras clave en una sola búsqueda: programador OR desarrollador OR "software engineer"..."""
+    return " OR ".join(f'"{p}"' if " " in p.strip() else p.strip() for p in palabras if p.strip())
+
+
+def _tpr_rapida(db):
+    """Solo lo publicado desde la última pasada (de cualquier tipo), con 10 min de margen; mínimo media hora."""
+    ult = db.ultima_pasada_inicio()
+    segundos = int(time.time() - ult) + 600 if ult else 3600
+    return f"r{min(86400, max(1800, segundos))}"
+
+
+def pasada(db, cfg, tpr=None, rapida=False):
     if not _lock.acquire(blocking=False):
         return None
     try:
-        return _pasada(db, cfg, tpr)
+        return _pasada(db, cfg, tpr, rapida)
     finally:
         estado["en_curso"] = False
         _lock.release()
 
 
-def _pasada(db, cfg, tpr):
+def _pasada(db, cfg, tpr, rapida=False):
     primera = db.vacia()
-    tpr = tpr or _tpr(db)
-    res = {"inicio": time.time(), "peticiones": 0, "tarjetas": 0, "nuevas": 0, "filtradas": 0, "cvs": 0, "error": ""}
-    busquedas = [(kw, m) for kw in cfg["palabras_clave"] for m in cfg["modos"]]
-    estado.update(en_curso=True, inicio=res["inicio"], fase="Buscando", hechas=0, total=len(busquedas))
-    log.info("Pasada (%s, %d búsquedas, primera=%s)", tpr, len(busquedas), primera)
+    rapida = rapida and not primera  # la primera siempre completa
+    res = {"inicio": time.time(), "peticiones": 0, "tarjetas": 0, "nuevas": 0, "filtradas": 0, "cvs": 0, "error": "",
+           "tipo": "rapida" if rapida else "completa"}
+    if rapida:
+        # una búsqueda por modo con todas las palabras juntas, solo la primera página y solo lo más reciente
+        tpr = tpr or _tpr_rapida(db)
+        kw = palabras_or(cfg["palabras_clave"])
+        busquedas = [(kw, {**m, "paginas": 1}) for m in cfg["modos"]]
+    else:
+        tpr = tpr or _tpr(db)
+        busquedas = [(kw, m) for kw in cfg["palabras_clave"] for m in cfg["modos"]]
+    estado.update(en_curso=True, inicio=res["inicio"], fase="Barrido rápido" if rapida else "Buscando", hechas=0,
+                  total=len(busquedas), tipo=res["tipo"])
+    log.info("Pasada %s (%s, %d búsquedas, primera=%s)", res["tipo"], tpr, len(busquedas), primera)
 
     candidatas, vistos = [], set()
     try:
@@ -77,6 +99,7 @@ def _pasada(db, cfg, tpr):
     except Bloqueado as e:
         res["error"] = f"LinkedIn ha limitado las peticiones ({e})"
         log.warning(res["error"])
+        estado["rapida_pausada_hasta"] = time.time() + 2 * 3600  # sin barridos rápidos un par de horas
         db.add_alerta(f"bloqueo:{time.strftime('%Y-%m-%d')}",
                       "LinkedIn está limitando las peticiones. La pasada se ha cortado; lo reintentaré en la siguiente. "
                       "Si se repite, quita palabras clave o pasadas al día.")

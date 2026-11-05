@@ -4,6 +4,7 @@
   python3 run.py servir                    web/API + pasadas programadas (lo que usa systemd)
   python3 run.py pasada [--semana]         pasada manual (--semana: ofertas de los últimos 7 días)
   python3 run.py probar ["palabras"]       enseña lo que ve en LinkedIn y cómo lo puntuaría, sin guardar nada
+  python3 run.py probar --rapida           lo mismo con la búsqueda del barrido rápido (palabras con OR)
   python3 run.py cv <id_oferta>            vuelve a generar el CV adaptado de una oferta
   python3 run.py logos                     pone el logo a las ofertas guardadas que no lo tienen
   python3 run.py demo                      mete ofertas de ejemplo para ver la web/app sin esperar
@@ -29,6 +30,7 @@ def main():
     pr = sub.add_parser("probar")
     pr.add_argument("palabras", nargs="?", default=None)
     pr.add_argument("--detalle", type=int, default=3, help="cuántas ofertas abrir para ver la descripción")
+    pr.add_argument("--rapida", action="store_true", help="prueba el barrido rápido (todas las palabras con OR)")
     c = sub.add_parser("cv")
     c.add_argument("id", type=int)
     sub.add_parser("demo")
@@ -46,7 +48,7 @@ def main():
     elif a.cmd == "pasada":
         print(scan.pasada(db, cfg, "r604800" if a.semana else None) or "Ya había una pasada en curso")
     elif a.cmd == "probar":
-        probar(cfg, a.palabras, a.detalle)
+        probar(cfg, scan.palabras_or(cfg["palabras_clave"]) if a.rapida else a.palabras, a.detalle)
     elif a.cmd == "cv":
         print(cv.adaptar(db, cfg, a.id))
     elif a.cmd == "demo":

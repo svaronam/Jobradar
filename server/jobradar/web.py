@@ -105,21 +105,21 @@ def make_handler(db, cfg):
                                      tipo or "application/octet-stream", cache=7 * 86400)
             if u.path == "/api/nuevas":
                 # la APK guarda el último id que notificó y pregunta por los siguientes que ya tengan su CV listo
+                # wait=N (máx. 55 s): espera abierta hasta que haya algo (avisos al momento en la APK)
                 desde, desde_al = int(q1("desde", "0")), int(q1("desde_alerta", "-1"))
-                tope = db.max_id(solo_listas=True)
-                res = {"items": [], "max_id": tope, "alertas": [], "max_alerta": db.max_alerta()}
-                if desde >= 0:
-                    items = db.listar(nivel=",".join(cfg["notificar_niveles"]), desde_id=desde, solo_listas=True,
-                                      solo_aviso=True, limite=50)
-                    res["items"] = [i for i in items if i["id"] <= tope and i["estado"] != "descartada"]
-                if desde_al >= 0:
-                    res["alertas"] = db.alertas_desde(desde_al)
-                return self._json(res)
+                fin = time.time() + max(0, min(55, int(q1("wait", "0") or 0)))
+                while True:
+                    res = nuevas(db, cfg, desde, desde_al)
+                    if res["items"] or res["alertas"] or time.time() >= fin:
+                        return self._json(res)
+                    time.sleep(2)
             if u.path == "/api/estado":
                 return self._json({"version": VERSION, "pasada": scan.estado, "pasadas": db.pasadas(8),
                                    "contadores": db.contar(), "frecuencia": planificador.describir(cfg),
-                                   "proxima": planificador.proxima(cfg, _ultima(db)).timestamp(),
+                                   "proxima": planificador.proxima(cfg, _ultima(db, "completa")).timestamp(),
+                                   "proxima_rapida": (lambda t: t.timestamp() if t else None)(_proxima_rapida(db, cfg)),
                                    "pasadas_al_dia": planificador.pasadas_al_dia(cfg),
+                                   "rapidas_al_dia": planificador.rapidas_al_dia(cfg),
                                    "alertas": db.alertas_recientes(72), "gemini": bool(cfg.get("gemini_api_key")),
                                    "cv": {i: bool(cv.base(cfg, i)) for i in cv.IDIOMAS}, "ahora": time.time()})
             if u.path == "/api/cv":
@@ -189,7 +189,7 @@ def make_handler(db, cfg):
                             b.get("frecuencia") or planificador.frecuencia(cfg), b.get("horas_pasada", cfg["horas_pasada"]))
                     config.guardar_ajustes(cfg, b)
                     res = {"ok": True, "ajustes": config.publico(cfg), "frecuencia": planificador.describir(cfg),
-                           "proxima": planificador.proxima(cfg, _ultima(db)).timestamp()}
+                           "proxima": planificador.proxima(cfg, _ultima(db, "completa")).timestamp()}
                     if any(k in b for k in ("perfil", "excluir_titulo", "excluir_empresas")):
                         res["recalculo"] = puntuar.recalcular(db, cfg)  # sueldo, km o exclusiones cambian la nota
                     return self._json(res)
@@ -218,6 +218,18 @@ def make_handler(db, cfg):
     return H
 
 
+def nuevas(db, cfg, desde, desde_al):
+    tope = db.max_id(solo_listas=True)
+    res = {"items": [], "max_id": tope, "alertas": [], "max_alerta": db.max_alerta()}
+    if desde >= 0:
+        items = db.listar(nivel=",".join(cfg["notificar_niveles"]), desde_id=desde, solo_listas=True,
+                          solo_aviso=True, limite=50)
+        res["items"] = [i for i in items if i["id"] <= tope and i["estado"] != "descartada"]
+    if desde_al >= 0:
+        res["alertas"] = db.alertas_desde(desde_al)
+    return res
+
+
 def baremo(cfg):
     P = puntuar.pesos(cfg)
     return {"pesos": P, "defecto": puntuar.PESOS, "niveles": {**puntuar.NIVELES_DEFECTO, **(cfg.get("niveles") or {})},
@@ -226,24 +238,37 @@ def baremo(cfg):
             "anios": cfg["perfil"]["anios_experiencia"], "personalizado": bool(cfg.get("pesos"))}
 
 
-def _ultima(db):
-    t = db.ultima_pasada_inicio()
+def _ultima(db, tipo=None):
+    t = db.ultima_pasada_inicio(tipo)
     return dt.datetime.fromtimestamp(t) if t else None
+
+
+def _proxima_rapida(db, cfg):
+    t = planificador.proxima_rapida(cfg, _ultima(db))
+    pausa = scan.estado.get("rapida_pausada_hasta") or 0
+    if t and pausa > time.time():
+        t = max(t, dt.datetime.fromtimestamp(pausa))
+    return t
 
 
 def programador(db, cfg):
     """Lanza las pasadas cuando toca según la frecuencia de ⚙ Ajustes (se relee en cada vuelta: los cambios
-    se aplican al momento, sin reiniciar)."""
+    se aplican al momento, sin reiniciar). Las completas mandan; entre medias, los barridos rápidos."""
     time.sleep(30)  # que la red y Tailscale se levanten tras un reinicio
     while True:
         try:
-            prox = planificador.proxima(cfg, _ultima(db))
-            if prox <= dt.datetime.now() and not scan.estado["en_curso"]:
-                log.info("Pasada programada (%s)", planificador.describir(cfg))
-                scan.pasada(db, cfg)
+            ahora = dt.datetime.now()
+            if not scan.estado["en_curso"]:
+                if planificador.proxima(cfg, _ultima(db, "completa")) <= ahora:
+                    log.info("Pasada programada (%s)", planificador.describir(cfg))
+                    scan.pasada(db, cfg)
+                else:
+                    rap = _proxima_rapida(db, cfg)
+                    if rap and rap <= ahora:
+                        scan.pasada(db, cfg, rapida=True)
         except Exception:  # noqa: BLE001 - que un fallo no pare las búsquedas para siempre
             log.exception("Error en el programador")
-        time.sleep(30)
+        time.sleep(20)
 
 
 def servir(db, cfg):

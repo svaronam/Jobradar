@@ -38,7 +38,11 @@ El cambio se aplica al momento, sin reiniciar. La app te enseña cuántas búsqu
 
 Si la Pi estuvo apagada, recupera la búsqueda perdida al encenderse. Cada búsqueda mira las ofertas publicadas desde la anterior: como mínimo las de las últimas 24 h y como máximo las de la última semana.
 
-Aparte, el móvil pregunta a la Pi si hay avisos nuevos cada 30 min. Eso se cambia en *Ajustes de la app* (mínimo 15 min, por límite de Android).
+**⚡ Barrido rápido**, para postular de los primeros: cada 15 min (5-180, o 0 para desactivarlo) dentro de la franja horaria. Hace una sola búsqueda por zona con todas las palabras clave juntas (`programador OR desarrollador OR …`) y solo de lo publicado desde el barrido anterior: unas 3 peticiones más una por oferta nueva, frente a las ~35 de una búsqueda completa. Las búsquedas completas siguen a sus horas para no perderse nada. Si LinkedIn limita, los barridos rápidos se paran solos 2 h.
+
+Para comprobar que la búsqueda con `OR` devuelve lo que toca: `python3 run.py probar --rapida`.
+
+**Avisos al momento en el móvil**: activado por defecto en *Ajustes de la app*. Deja una notificación fija y mantiene una conexión abierta con la Pi, que contesta en cuanto una oferta nueva tiene su CV, así que el aviso llega en segundos. La notificación fija se puede ocultar desde los ajustes de notificaciones de Android sin que se pare. Si lo desactivas, queda el comprobador de respaldo cada 15-30 min (mínimo 15 por límite de Android).
 
 Solo se abre el detalle de las ofertas **nuevas**, y antes se descartan por título las que no son de programar ni analizar (QA, comercial, soporte, prácticas, diseño…). La lista de exclusiones se edita en ⚙ Ajustes.
 

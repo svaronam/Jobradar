@@ -9,7 +9,9 @@ cambiar la frecuencia se aplica al momento y, si la Pi estuvo apagada, recupera 
 import datetime as dt
 import re
 
-DEFECTO = {"modo": "horas", "cada_horas": 3, "desde": "08:00", "hasta": "22:00", "dias": [0, 1, 2, 3, 4, 5, 6]}
+DEFECTO = {"modo": "horas", "cada_horas": 3, "desde": "08:00", "hasta": "22:00", "dias": [0, 1, 2, 3, 4, 5, 6],
+           "rapida_min": 15}
+MIN_RAPIDA = 5         # minutos: el barrido rápido son ~3 peticiones, pero sin pasarse
 MIN_HORAS = 1          # menos que esto y LinkedIn empieza a limitar
 RECUPERAR_HORAS = 3    # una hora fija perdida (Pi apagada) se recupera si no hace más de esto
 DIAS = ["L", "M", "X", "J", "V", "S", "D"]
@@ -50,13 +52,47 @@ def validar(f, horas):
     hs = sorted({"%02d:%02d" % _hm(h) for h in (horas or [])})
     if modo == "horas" and not hs:
         raise ValueError("Pon al menos una hora de búsqueda")
-    limpio = {"modo": modo, "cada_horas": cada, "desde": "%02d:%02d" % desde, "hasta": "%02d:%02d" % hasta, "dias": dias}
+    try:
+        rapida = int(f.get("rapida_min", DEFECTO["rapida_min"]) or 0)
+    except (TypeError, ValueError):
+        raise ValueError("«Barrido rápido» tiene que ser un número de minutos (0 = desactivado)")
+    if rapida and not MIN_RAPIDA <= rapida <= 180:
+        raise ValueError(f"El barrido rápido va de {MIN_RAPIDA} a 180 minutos (0 = desactivado)")
+    limpio = {"modo": modo, "cada_horas": cada, "desde": "%02d:%02d" % desde, "hasta": "%02d:%02d" % hasta, "dias": dias,
+              "rapida_min": rapida}
     return limpio, hs or ["08:40"]
 
 
 def _en(dia, hm):
     h, m = _hm(hm)
     return dt.datetime.combine(dia, dt.time(h, m))
+
+
+def _ajustar(f, t):
+    """Lleva t al primer momento permitido (día elegido y dentro de la franja) a partir de t."""
+    dias, ini, fin = set(f["dias"]), f["desde"], f["hasta"]
+    for _ in range(9):
+        if t.weekday() in dias:
+            if t < _en(t.date(), ini):
+                return _en(t.date(), ini)
+            if t <= _en(t.date(), fin):
+                return t
+        t = _en(t.date() + dt.timedelta(days=1), ini)
+    return t
+
+
+def proxima_rapida(cfg, ultima, ahora=None):
+    """Próximo barrido rápido (None si está desactivado). 'ultima' = inicio de la última pasada de cualquier tipo.
+    Va dentro de la franja desde-hasta y los días elegidos, también en el modo de horas fijas."""
+    ahora = ahora or dt.datetime.now()
+    f = frecuencia(cfg)
+    mins = int(f.get("rapida_min") or 0)
+    if not mins or ultima is None:
+        return None
+    t = _ajustar(f, ultima + dt.timedelta(minutes=mins))
+    if t < ahora:
+        t = _ajustar(f, ahora)
+    return t
 
 
 def proxima(cfg, ultima, ahora=None):
@@ -80,18 +116,8 @@ def proxima(cfg, ultima, ahora=None):
                     return t
         return ahora + dt.timedelta(days=1)
 
-    ini, fin = f["desde"], f["hasta"]
-
     def ajustar(t):
-        """Lleva t al primer momento permitido (día elegido y dentro de la franja) a partir de t."""
-        for _ in range(9):
-            if t.weekday() in dias:
-                if t < _en(t.date(), ini):
-                    return _en(t.date(), ini)
-                if t <= _en(t.date(), fin):
-                    return t
-            t = _en(t.date() + dt.timedelta(days=1), ini)
-        return t
+        return _ajustar(f, t)
 
     t = ajustar(ultima + dt.timedelta(hours=f["cada_horas"]))
     if t < ahora:  # se pasó la hora (Pi apagada o frecuencia recién acortada): ya, si ahora se puede
@@ -108,12 +134,23 @@ def pasadas_al_dia(cfg):
     return int(minutos // (f["cada_horas"] * 60)) + 1
 
 
+def rapidas_al_dia(cfg):
+    f = frecuencia(cfg)
+    mins = int(f.get("rapida_min") or 0)
+    if not mins:
+        return 0
+    a, b = _hm(f["desde"]), _hm(f["hasta"])
+    return int(((b[0] * 60 + b[1]) - (a[0] * 60 + a[1])) // mins)
+
+
 def describir(cfg):
     f = frecuencia(cfg)
     dias = "todos los días" if len(f["dias"]) == 7 else (
         "de lunes a viernes" if f["dias"] == [0, 1, 2, 3, 4] else " ".join(DIAS[d] for d in f["dias"]))
+    rap = f" + rápido cada {f['rapida_min']} min" if f.get("rapida_min") else ""
     if f["modo"] == "horas":
-        return f"a las {', '.join(f['horas'])}, {dias}"
+        rap += f" de {f['desde']} a {f['hasta']}" if rap else ""
+        return f"a las {', '.join(f['horas'])}{rap}, {dias}"
     cada = f["cada_horas"]
     cada_txt = f"{int(cada)} h" if cada == int(cada) else f"{cada:g} h"
-    return f"cada {cada_txt} de {f['desde']} a {f['hasta']}, {dias}"
+    return f"cada {cada_txt} de {f['desde']} a {f['hasta']}{rap}, {dias}"

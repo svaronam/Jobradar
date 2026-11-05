@@ -28,7 +28,9 @@ DEFAULT = {
         {"nombre": "zona", "location": "Bilbao, País Vasco, España", "distance": "25", "f_WT": "1,3", "paginas": 1},
     ],
     # cuándo buscar: "horas" = a las horas_pasada · "intervalo" = cada cada_horas entre desde y hasta
-    "frecuencia": {"modo": "horas", "cada_horas": 3, "desde": "08:00", "hasta": "22:00", "dias": [0, 1, 2, 3, 4, 5, 6]},
+    # rapida_min: barrido rápido cada N minutos entre desde y hasta (0 = desactivado)
+    "frecuencia": {"modo": "horas", "cada_horas": 3, "desde": "08:00", "hasta": "22:00", "dias": [0, 1, 2, 3, 4, 5, 6],
+                   "rapida_min": 15},
     "horas_pasada": ["08:40", "13:40", "19:40"],
     "pausa_min": 3.0,
     "pausa_max": 7.0,

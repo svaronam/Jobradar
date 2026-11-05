@@ -31,6 +31,11 @@ class Prefs(ctx: Context) {
         get() = sp.getString("ultima_consulta", "") ?: ""
         set(v) = sp.edit().putString("ultima_consulta", v).apply()
 
+    /** Servicio en primer plano que recibe las ofertas al momento (si no, solo el comprobador periódico). */
+    var alMomento: Boolean
+        get() = sp.getBoolean("al_momento", true)
+        set(v) = sp.edit().putBoolean("al_momento", v).apply()
+
     fun configurado() = servidor.startsWith("http")
 
     /** URL del servidor con el token en la query (para la WebView y las descargas). */

@@ -19,6 +19,8 @@ object Avisos {
     const val CANAL_VIGILAR = "vigilar"
     const val CANAL_RESUMEN = "resumen"
     const val CANAL_ESTADO = "estado"
+    const val CANAL_FIJA = "fija"
+    const val ID_FIJA = 4
 
     fun crearCanales(ctx: Context) {
         val nm = ctx.getSystemService(NotificationManager::class.java)
@@ -34,6 +36,11 @@ object Avisos {
         nm.createNotificationChannel(NotificationChannel(CANAL_ESTADO, "⚠ Estado del radar",
             NotificationManager.IMPORTANCE_DEFAULT).apply {
             description = "Si LinkedIn limita las peticiones o cambia su página"
+        })
+        nm.createNotificationChannel(NotificationChannel(CANAL_FIJA, "Avisos al momento (fija)",
+            NotificationManager.IMPORTANCE_MIN).apply {
+            description = "Notificación fija mientras la app escucha a la Pi. Puedes ocultarla aquí sin que se pare"
+            setShowBadge(false)
         })
         nm.createNotificationChannel(NotificationChannel(CANAL_RESUMEN, "Resúmenes",
             NotificationManager.IMPORTANCE_LOW).apply { description = "Cuando llegan muchas a la vez" })
@@ -113,6 +120,20 @@ object Avisos {
             b.addAction(Notification.Action.Builder(null as Icon?, "Ver CV", abrirApp(ctx, "oferta-$id", id)).build())
         }
         ctx.getSystemService(NotificationManager::class.java).notify((id + 1000).toInt(), b.build())
+    }
+
+    fun fija(ctx: Context, texto: String): Notification =
+        Notification.Builder(ctx, CANAL_FIJA)
+            .setSmallIcon(R.drawable.ic_stat)
+            .setContentTitle("JobRadar")
+            .setContentText(texto)
+            .setOngoing(true)
+            .setShowWhen(false)
+            .setContentIntent(abrirApp(ctx, ""))
+            .build()
+
+    fun actualizarFija(ctx: Context, texto: String) {
+        ctx.getSystemService(NotificationManager::class.java).notify(ID_FIJA, fija(ctx, texto))
     }
 
     fun resumen(ctx: Context, total: Int, prioritarias: Int) {

@@ -20,6 +20,7 @@ import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -64,6 +65,7 @@ class MainActivity : Activity() {
 
         if (prefs.configurado()) {
             Comprobador.programar(this)
+            Servicio.arrancar(this)
             cargar(intent)
         } else {
             web.loadDataWithBaseURL(null, paginaInicio(), "text/html", "utf-8", null)
@@ -216,8 +218,14 @@ class MainActivity : Activity() {
             inputType = InputType.TYPE_CLASS_NUMBER
             setSingleLine(true)
         }
+        val alMomento = CheckBox(this).apply {
+            text = "Avisos al momento (deja una notificación fija; recomendado para postular de los primeros)"
+            isChecked = prefs.alMomento
+            setPadding(0, pad / 2, 0, 0)
+        }
         val estado = TextView(this).apply {
-            text = "Última comprobación: " + prefs.ultimaConsulta.ifBlank { "—" }
+            text = "Última comprobación: " + prefs.ultimaConsulta.ifBlank { "—" } +
+                if (Servicio.conectado) "\nAvisos al momento: conectado" else ""
             setPadding(0, pad / 2, 0, 0)
             alpha = 0.7f
         }
@@ -225,7 +233,8 @@ class MainActivity : Activity() {
         caja.addView(url)
         caja.addView(etiqueta("Token"))
         caja.addView(token)
-        caja.addView(etiqueta("Comprobar ofertas cada (minutos, mínimo 15)"))
+        caja.addView(alMomento)
+        caja.addView(etiqueta("Respaldo: comprobar cada (minutos, mínimo 15)"))
         caja.addView(minutos)
         caja.addView(estado)
 
@@ -242,6 +251,7 @@ class MainActivity : Activity() {
                 prefs.servidor = u
                 prefs.token = token.text.toString()
                 prefs.minutos = (minutos.text.toString().toIntOrNull() ?: 30).coerceAtLeast(15)
+                prefs.alMomento = alMomento.isChecked
                 comprobarConexion(d)
             }
             d.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
@@ -264,6 +274,7 @@ class MainActivity : Activity() {
                 if (r.startsWith("OK")) {
                     Toast.makeText(this, "Conectado ($r)", Toast.LENGTH_SHORT).show()
                     Comprobador.programar(this, reemplazar = true)
+                    if (prefs.alMomento) Servicio.reiniciar(this) else Servicio.parar(this)
                     d.dismiss()
                     cargar(null)
                 } else {

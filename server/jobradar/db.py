@@ -49,6 +49,8 @@ class DB:
             for col, tipo in COLS_NUEVAS.items():  # migración desde la v1.0
                 if col not in tiene:
                     c.execute(f"ALTER TABLE ofertas ADD COLUMN {col} {tipo}")
+            if "tipo" not in {r["name"] for r in c.execute("PRAGMA table_info(pasadas)")}:
+                c.execute("ALTER TABLE pasadas ADD COLUMN tipo TEXT DEFAULT 'completa'")
 
     @contextlib.contextmanager
     def _c(self):
@@ -212,9 +214,16 @@ class DB:
         with self._c() as c:
             return [dict(r) for r in c.execute("SELECT * FROM pasadas ORDER BY id DESC LIMIT ?", (n,))]
 
-    def ultima_pasada_inicio(self):
+    def ultima_pasada_inicio(self, tipo=None):
+        """Inicio de la última pasada; tipo 'completa' o 'rapida' (None = cualquiera)."""
         with self._c() as c:
-            r = c.execute("SELECT inicio FROM pasadas ORDER BY id DESC LIMIT 1").fetchone()
+            if tipo == "completa":
+                r = c.execute("SELECT inicio FROM pasadas WHERE COALESCE(tipo,'completa')='completa' "
+                              "ORDER BY id DESC LIMIT 1").fetchone()
+            elif tipo:
+                r = c.execute("SELECT inicio FROM pasadas WHERE tipo=? ORDER BY id DESC LIMIT 1", (tipo,)).fetchone()
+            else:
+                r = c.execute("SELECT inicio FROM pasadas ORDER BY id DESC LIMIT 1").fetchone()
             return r["inicio"] if r else None
 
     def ultima_pasada_ok(self):

@@ -211,8 +211,46 @@ class TestPlanificador(unittest.TestCase):
         ahora = dt.datetime(2026, 11, 5, 15, 0)
         self.assertEqual(pl.proxima(cfg, dt.datetime(2026, 11, 5, 10, 0), ahora), ahora)
         self.assertEqual(pl.pasadas_al_dia(cfg), 5)
-        self.assertEqual(pl.describir(cfg), "cada 3 h de 08:00 a 22:00, todos los días")
+        self.assertEqual(pl.describir(cfg), "cada 3 h de 08:00 a 22:00 + rápido cada 15 min, todos los días")
         self.assertEqual(pl.proxima(cfg, None, ahora), ahora)  # nunca buscó: ya
+
+    def test_barrido_rapido(self):
+        from jobradar import planificador as pl, scan
+        import datetime as dt
+        cfg = {"horas_pasada": ["08:40", "13:40", "19:40"],
+               "frecuencia": {"modo": "horas", "rapida_min": 15, "desde": "08:00", "hasta": "22:00"}}
+        ult = dt.datetime(2026, 11, 5, 10, 0)
+        self.assertEqual(pl.proxima_rapida(cfg, ult, dt.datetime(2026, 11, 5, 10, 5)), dt.datetime(2026, 11, 5, 10, 15))
+        # fuera de la franja: mañana a las 08:00
+        self.assertEqual(pl.proxima_rapida(cfg, dt.datetime(2026, 11, 5, 21, 55), dt.datetime(2026, 11, 5, 21, 56)),
+                         dt.datetime(2026, 11, 6, 8, 0))
+        cfg["frecuencia"]["rapida_min"] = 0
+        self.assertIsNone(pl.proxima_rapida(cfg, ult))
+        self.assertEqual(scan.palabras_or(["programador", "software engineer", " "]), 'programador OR "software engineer"')
+        with self.assertRaises(ValueError):
+            pl.validar({"modo": "horas", "rapida_min": 2, "dias": [0]}, ["09:00"])
+        self.assertEqual(pl.validar({"modo": "horas", "rapida_min": 0, "dias": [0]}, ["09:00"])[0]["rapida_min"], 0)
+
+    def test_pasada_rapida_y_tipo(self):
+        from jobradar import scan, util, linkedin
+        cfg = cfg_prueba()
+        cfg["pausa_min"] = cfg["pausa_max"] = 0
+        db = DB(os.path.join(cfg["data_dir"], "t.db"))
+        urls = []
+        lista = leer("lista.html")
+        util.get, orig = (lambda url, **k: (urls.append(url) or (200, "" if "jobPosting" in url else lista))), util.get
+        linkedin.util.get = util.get
+        try:
+            db.guardar({"uid": "previa", "nivel": "baja"})  # ya hubo una pasada completa antes
+            r = scan.pasada(db, cfg, rapida=True)
+        finally:
+            util.get = linkedin.util.get = orig
+        self.assertEqual(r["tipo"], "rapida")
+        listados = [u for u in urls if "seeMoreJobPostings" in u]
+        self.assertEqual(len(listados), len(cfg["modos"]))  # una por modo
+        self.assertIn("OR", linkedin.urllib.parse.unquote_plus(listados[0]))
+        self.assertIsNotNone(db.ultima_pasada_inicio("rapida"))
+        self.assertIsNone(db.ultima_pasada_inicio("completa"))
 
     def test_validar(self):
         from jobradar import planificador as pl

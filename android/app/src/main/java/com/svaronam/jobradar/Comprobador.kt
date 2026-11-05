@@ -27,64 +27,83 @@ import java.util.concurrent.TimeUnit
 class Comprobador(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
 
     override fun doWork(): Result {
-        val p = Prefs(applicationContext)
-        if (!p.configurado()) return Result.success()
-        val ahora = SimpleDateFormat("dd/MM HH:mm", Locale("es")).format(Date())
-        return try {
-            val json = get("${p.servidor}/api/nuevas?desde=${p.ultimoId}&desde_alerta=${p.ultimaAlertaId}", p.token)
-
-            val als = json.optJSONArray("alertas")
-            if (p.ultimaAlertaId >= 0 && als != null) {
-                for (i in 0 until minOf(als.length(), 3)) Avisos.alerta(applicationContext, als.getJSONObject(i))
-            }
-            p.ultimaAlertaId = maxOf(p.ultimaAlertaId, json.optLong("max_alerta", 0))
-
-            val items = json.optJSONArray("items")
-            val maxId = json.optLong("max_id", 0)
-            val n = items?.length() ?: 0
-            if (p.ultimoId >= 0 && n > 0) {
-                val lista = (0 until n).map { items!!.getJSONObject(it) }
-                val prioritarias = lista.count { it.optString("nivel") == "prioritaria" }
-                val avisar = if (n <= 5) lista else lista.sortedByDescending { it.optInt("score") }.take(4)
-                avisar.forEach { Avisos.oferta(applicationContext, it, logo(p, it)) }
-                if (n > 1) Avisos.resumen(applicationContext, n, prioritarias)
-            }
-            // si vinieron 50 (el máximo por consulta) quedan más: avanzamos solo hasta la última recibida
-            val ultimaRecibida = if (n > 0) items!!.getJSONObject(n - 1).optLong("id") else maxId
-            p.ultimoId = if (n >= 50) ultimaRecibida else maxOf(maxId, ultimaRecibida)
-            p.ultimaConsulta = "OK $ahora · $n ofertas nuevas"
-            Result.success()
-        } catch (e: Exception) {
-            p.ultimaConsulta = "Sin conexión $ahora · ${e.message ?: e.javaClass.simpleName}"
-            Result.success()
-        }
-    }
-
-    /** Logo de la empresa desde la Pi; si no hay o falla, la notificación sale sin él. */
-    private fun logo(p: Prefs, o: JSONObject): Bitmap? {
-        if (o.optString("logo").let { it.isBlank() || it == "null" }) return null
-        return try {
-            val c = URL("${p.servidor}/api/ofertas/${o.getLong("id")}/logo").openConnection() as HttpURLConnection
-            c.connectTimeout = 8000
-            c.readTimeout = 10000
-            if (p.token.isNotBlank()) c.setRequestProperty("X-Token", p.token)
-            try {
-                if (c.responseCode != 200) null else c.inputStream.use { BitmapFactory.decodeStream(it) }
-            } finally {
-                c.disconnect()
-            }
-        } catch (e: Exception) {
-            null
-        }
+        // con "Avisos al momento" conectado ya se encarga el servicio; esto queda de respaldo
+        if (Servicio.conectado) return Result.success()
+        consultar(applicationContext)
+        return Result.success()
     }
 
     companion object {
         private const val NOMBRE = "jobradar-comprobar"
+        private val cerrojo = Any()
 
-        fun get(url: String, token: String): JSONObject {
+        /**
+         * Pregunta a la Pi por ofertas y alertas nuevas y las notifica. wait > 0 deja la petición abierta hasta
+         * que haya algo (máx. 55 s): así trabaja el servicio de avisos al momento. Devuelve cuántas ofertas llegaron
+         * o lanza la excepción si no llega a la Pi.
+         */
+        fun consultar(ctx: Context, wait: Int = 0, lanzar: Boolean = false): Int {
+            val p = Prefs(ctx)
+            if (!p.configurado()) return 0
+            val ahora = SimpleDateFormat("dd/MM HH:mm", Locale("es")).format(Date())
+            try {
+                val url = "${p.servidor}/api/nuevas?desde=${p.ultimoId}&desde_alerta=${p.ultimaAlertaId}&wait=$wait"
+                val json = get(url, p.token, if (wait > 0) (wait + 20) * 1000 else 20000)
+                synchronized(cerrojo) {
+                    val als = json.optJSONArray("alertas")
+                    if (p.ultimaAlertaId >= 0 && als != null) {
+                        for (i in 0 until minOf(als.length(), 3)) Avisos.alerta(ctx, als.getJSONObject(i))
+                    }
+                    p.ultimaAlertaId = maxOf(p.ultimaAlertaId, json.optLong("max_alerta", 0))
+
+                    val items = json.optJSONArray("items")
+                    val maxId = json.optLong("max_id", 0)
+                    // solo las que no se hayan notificado ya (por si el servicio y el respaldo se cruzan)
+                    val lista = if (items == null) emptyList() else
+                        (0 until items.length()).map { items.getJSONObject(it) }.filter { it.optLong("id") > p.ultimoId }
+                    val n = lista.size
+                    if (p.ultimoId >= 0 && n > 0) {
+                        val prioritarias = lista.count { it.optString("nivel") == "prioritaria" }
+                        val avisar = if (n <= 5) lista else lista.sortedByDescending { it.optInt("score") }.take(4)
+                        avisar.forEach { Avisos.oferta(ctx, it, logo(p, it)) }
+                        if (n > 1) Avisos.resumen(ctx, n, prioritarias)
+                    }
+                    // si vinieron 50 (el máximo por consulta) quedan más: avanzamos solo hasta la última recibida
+                    val ultimaRecibida = if (n > 0) lista.last().optLong("id") else maxId
+                    p.ultimoId = if ((items?.length() ?: 0) >= 50) ultimaRecibida else maxOf(p.ultimoId, maxId, ultimaRecibida)
+                    p.ultimaConsulta = "OK $ahora · $n ofertas nuevas"
+                    return n
+                }
+            } catch (e: Exception) {
+                p.ultimaConsulta = "Sin conexión $ahora · ${e.message ?: e.javaClass.simpleName}"
+                if (lanzar) throw e
+                return 0
+            }
+        }
+
+        /** Logo de la empresa desde la Pi; si no hay o falla, la notificación sale sin él. */
+        private fun logo(p: Prefs, o: JSONObject): Bitmap? {
+            if (o.optString("logo").let { it.isBlank() || it == "null" }) return null
+            return try {
+                val c = URL("${p.servidor}/api/ofertas/${o.getLong("id")}/logo").openConnection() as HttpURLConnection
+                c.connectTimeout = 8000
+                c.readTimeout = 10000
+                if (p.token.isNotBlank()) c.setRequestProperty("X-Token", p.token)
+                try {
+                    if (c.responseCode != 200) null else c.inputStream.use { BitmapFactory.decodeStream(it) }
+                } finally {
+                    c.disconnect()
+                }
+            } catch (e: Exception) {
+                null
+            }
+        }
+
+
+        fun get(url: String, token: String, readTimeout: Int = 20000): JSONObject {
             val c = URL(url).openConnection() as HttpURLConnection
             c.connectTimeout = 15000
-            c.readTimeout = 20000
+            c.readTimeout = readTimeout
             if (token.isNotBlank()) c.setRequestProperty("X-Token", token)
             try {
                 if (c.responseCode == 401) throw IllegalStateException("Token incorrecto")

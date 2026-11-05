@@ -296,7 +296,8 @@ function pintarAvisos() {
     const pct = p.total ? Math.round(100 * p.hechas / p.total) : 0;
     out.push(`<div class="progreso">${esc(p.fase)}… ${p.hechas}/${p.total}<div class="barra"><i style="width:${pct}%"></i></div></div>`);
   } else if (e.proxima) {
-    out.push(`<div class="pas" style="margin:0 2px 8px">Próxima búsqueda ${proxTxt(e.proxima)} · ${esc(e.frecuencia || "")}</div>`);
+    const prox = e.proxima_rapida && e.proxima_rapida < e.proxima ? `Próximo barrido ${proxTxt(e.proxima_rapida)}` : `Próxima búsqueda ${proxTxt(e.proxima)}`;
+    out.push(`<div class="pas" style="margin:0 2px 8px">${prox} · ${esc(e.frecuencia || "")}</div>`);
   }
   $("#avisos").innerHTML = out.join("");
 }
@@ -539,7 +540,7 @@ async function abrirAjustes() {
   const nv = a.notificar_niveles || [];
   const f = Object.assign({modo: "horas", cada_horas: 3, desde: "08:00", hasta: "22:00", dias: [0, 1, 2, 3, 4, 5, 6]}, a.frecuencia || {});
   const pas = (e.pasadas || []).map(x => `<div>${new Date(x.inicio * 1000).toLocaleString("es", {dateStyle: "short", timeStyle: "short"})}
-     · ${x.tarjetas} vistas · ${x.nuevas} nuevas · ${x.cvs || 0} CV${x.error ? ` · <span class="no">${esc(x.error)}</span>` : ""}</div>`).join("") || "Ninguna todavía";
+     · ${x.tipo === "rapida" ? "⚡ " : ""}${x.tarjetas} vistas · ${x.nuevas} nuevas · ${x.cvs || 0} CV${x.error ? ` · <span class="no">${esc(x.error)}</span>` : ""}</div>`).join("") || "Ninguna todavía";
   const tema = document.documentElement.dataset.tema;
   $("#ajustesIn").innerHTML = `<h2>Ajustes</h2>
     <label>Tema</label>
@@ -567,12 +568,20 @@ async function abrirAjustes() {
       <div id="fHoras" ${f.modo === "horas" ? "" : "hidden"}>
         <label>Horas (HH:MM, una por línea)</label><textarea id="aHoras" rows="3">${esc(lineas(a.horas_pasada))}</textarea>
       </div>
+      <label>⚡ Barrido rápido cada (minutos, 0 = desactivado)</label>
+      <div class="row2"><input type="number" id="fRapida" min="0" max="180" step="5" value="${f.rapida_min ?? 15}" style="max-width:110px">
+        <span class="pas">Solo lo recién publicado, todas las palabras en una búsqueda: ~3 peticiones. Dentro de la franja
+        <b id="fFranja">${f.desde}–${f.hasta}</b>.</span></div>
+      <div id="fFranjaHoras" ${f.modo === "horas" ? "" : "hidden"}>
+        <label>Franja del barrido rápido</label>
+        <div class="row2"><input type="time" id="fDesde2" value="${f.desde}"><span>a</span><input type="time" id="fHasta2" value="${f.hasta}"></div>
+      </div>
       <label>Días</label>
       <div class="ck" id="fDias">${["L", "M", "X", "J", "V", "S", "D"].map((d, i) =>
         `<label><input type="checkbox" data-dia="${i}" ${f.dias.includes(i) ? "checked" : ""}> ${d}</label>`).join("")}</div>
       <p class="pas" id="fResumen" style="margin:10px 0 0"></p>
-      <p class="pas" style="margin:4px 0 0">Próxima: <b>${proxTxt(e.proxima)}</b>. El móvil mira si hay avisos nuevos cada
-        30 min${ANDROID ? " (se cambia en «Ajustes de la app»)" : ""}; un aviso puede tardar eso en llegar tras la búsqueda.</p>
+      <p class="pas" style="margin:4px 0 0">Próxima completa: <b>${proxTxt(e.proxima)}</b>${e.proxima_rapida ? ` · próximo barrido rápido: <b>${proxTxt(e.proxima_rapida)}</b>` : ""}.
+        Para que el aviso llegue en segundos, activa «Avisos al momento» en ${ANDROID ? "«Ajustes de la app»" : "los ajustes de la APK"}.</p>
     </div>
     <label>Palabras clave que busca en LinkedIn (una por línea)</label><textarea id="aKw" rows="6">${esc(lineas(a.palabras_clave))}</textarea>
     <label>Crear CV a partir de (puntos)</label><input type="number" id="aCv" value="${a.cv_desde_score}">
@@ -590,8 +599,12 @@ async function abrirAjustes() {
     <div class="pas" style="margin-top:10px">JobRadar ${esc(e.version)} · búsquedas ${esc(e.frecuencia || "")}</div>`;
   $("#hAjustes").classList.add("open");
   const sp = s => s.split("\n").map(x => x.trim()).filter(Boolean);
+  // la franja se edita en el bloque de intervalo o, en horas fijas, en la del barrido rápido
+  const franja = () => $("#fModo .on").dataset.m === "intervalo"
+    ? [$("#fDesde").value || "08:00", $("#fHasta").value || "22:00"]
+    : [$("#fDesde2").value || "08:00", $("#fHasta2").value || "22:00"];
   const leerFrec = () => ({modo: $("#fModo .on").dataset.m, cada_horas: +$("#fCada").value || 0,
-    desde: $("#fDesde").value || "08:00", hasta: $("#fHasta").value || "22:00",
+    desde: franja()[0], hasta: franja()[1], rapida_min: +$("#fRapida").value || 0,
     dias: [...document.querySelectorAll("[data-dia]")].filter(x => x.checked).map(x => +x.dataset.dia)});
   const resumenFrec = () => {
     const fr = leerFrec(), kw = sp($("#aKw").value).length || 1;
@@ -604,15 +617,20 @@ async function abrirAjustes() {
       n = err ? 0 : Math.floor(ventana / (fr.cada_horas * 60)) + 1;
     }
     if (!fr.dias.length) err = "Elige al menos un día.";
-    const pet = n * kw * 5;  // palabras × 5 modos, más las ofertas nuevas que abre
+    if (fr.rapida_min && (fr.rapida_min < 5 || fr.rapida_min > 180)) err = "El barrido rápido va de 5 a 180 minutos (0 = desactivado).";
+    const m2 = t => +t.split(":")[0] * 60 + +t.split(":")[1];
+    const nr = fr.rapida_min ? Math.floor((m2(fr.hasta) - m2(fr.desde)) / fr.rapida_min) : 0;
+    const pet = n * kw * 5 + nr * 3;  // completas: palabras × páginas; rápidas: ~3
+    $("#fFranja").textContent = `${fr.desde}–${fr.hasta}`;
     $("#fResumen").innerHTML = err ? `<span class="no">${err}</span>` :
-      `≈ <b>${n}</b> búsquedas al día${fr.dias.length < 7 ? " los días marcados" : ""} · ~${pet} peticiones a LinkedIn al día
-       (+ una por oferta nueva)${pet > 400 ? ' · <span class="no">muchas: puede que LinkedIn limite</span>' : ""}`;
+      `≈ <b>${n}</b> búsquedas completas${nr ? ` y <b>${nr}</b> rápidas` : ""} al día${fr.dias.length < 7 ? " (días marcados)" : ""}
+       · ~${pet} peticiones a LinkedIn al día (+ una por oferta nueva)${pet > 500 ? ' · <span class="no">muchas: puede que LinkedIn limite</span>' : ""}`;
   };
   $("#fModo").onclick = ev => {
     const b = ev.target.closest("[data-m]"); if (!b) return;
     $("#fModo").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
-    $("#fIntervalo").hidden = b.dataset.m !== "intervalo"; $("#fHoras").hidden = b.dataset.m !== "horas"; resumenFrec();
+    $("#fIntervalo").hidden = b.dataset.m !== "intervalo"; $("#fHoras").hidden = b.dataset.m !== "horas";
+    $("#fFranjaHoras").hidden = b.dataset.m !== "horas"; resumenFrec();
   };
   $("#ajustesIn").oninput = resumenFrec;
   resumenFrec();
