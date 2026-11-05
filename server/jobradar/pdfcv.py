@@ -1,7 +1,7 @@
 """Pinta el CV en PDF con el mismo estilo que tu CV original (una página, A4, serif, versalitas).
 
 Usa Charis SIL (la versión libre de Bitstream Charter, la letra de tu CV) si está instalada
-(`sudo apt install fonts-sil-charis`); si no, Times. Si no cabe en una página, reduce la letra poco a poco.
+(`sudo apt install fonts-sil-charis`), o Bitstream Charter en Type 1 si la hay; si no, Times. Si no cabe en una página, reduce la letra poco a poco.
 """
 import glob
 import io
@@ -42,6 +42,18 @@ def _fuente():
             nombres = ("CVR", "CVB", "CVI", "CVBI")
             for n, r in zip(nombres, rutas):
                 pdfmetrics.registerFont(TTFont(n, r))
+            pdfmetrics.registerFontFamily("CV", normal="CVR", bold="CVB", italic="CVI", boldItalic="CVBI")
+            _FUENTE = nombres
+            return _FUENTE
+    # Bitstream Charter en Type 1 (paquetes xfonts / texlive): la misma letra del CV original
+    for base in ("/usr/share/fonts/X11/Type1", "/usr/share/fonts/type1/bitstream", "/usr/share/fonts/X11/Type1/bitstream"):
+        archivos = [os.path.join(base, f"c06{n}bt_") for n in ("48", "32", "49", "33")]
+        if all(os.path.exists(a + ".afm") and os.path.exists(a + ".pfb") for a in archivos):
+            nombres = ("CVR", "CVB", "CVI", "CVBI")
+            for n, a in zip(nombres, archivos):
+                cara = pdfmetrics.EmbeddedType1Face(a + ".afm", a + ".pfb")
+                pdfmetrics.registerTypeFace(cara)
+                pdfmetrics.registerFont(pdfmetrics.Font(n, cara.name, "WinAnsiEncoding"))
             pdfmetrics.registerFontFamily("CV", normal="CVR", bold="CVB", italic="CVI", boldItalic="CVBI")
             _FUENTE = nombres
             return _FUENTE
@@ -144,7 +156,7 @@ def _historia(cv, k, ancho):
             h += seccion(sec.get("proyectos", "Proyectos"))
             for pr in cv["proyectos"]:
                 izq = md(pr["nombre"]) + (f' | <i>{escape(pr["stack"])}</i>' if pr.get("stack") else "")
-                h.append(KeepTogether([_fila(izq, md(pr.get("fechas", "")), E["izq"], E["der"], ancho, 0.8),
+                h.append(KeepTogether([_fila(izq, md(pr.get("fechas", "")), E["izq"], E["der"], ancho, 0.86),
                                        Spacer(1, 1.5 * k), *vinetas(pr.get("logros") or [])]))
         elif s == "habilidades" and cv.get("habilidades"):
             h += seccion(sec.get("habilidades", "Habilidades"))
