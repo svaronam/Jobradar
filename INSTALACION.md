@@ -115,6 +115,17 @@ Si una frase incumple algo de esto, se queda la tuya original. En la ficha («De
 
 ---
 
+## Candidaturas
+
+Cuando te postules a una oferta, pulsa **✓ Aplicada** en su tarjeta y pasa a la pestaña **Candidaturas**. Ahí:
+- Cada candidatura avanza por *Aplicada → Entrevista → Prueba técnica → Oferta*, o se cierra como *Rechazada* o *Me retiré*.
+- En cada paso puedes apuntar una nota (con quién hablaste, qué te preguntaron, qué sueldo comentaron…) y la fecha, por si lo apuntas días después. Si te equivocas, borras el paso y vuelve la fase anterior.
+- **Recordatorio**: si una candidatura en curso lleva **7 días** sin ningún movimiento, te llega «⏰ Candidatura sin novedades», solo entre las 9 y las 21 h. Si sigues sin apuntar nada, se repite cada vez que vuelvan a pasar esos días. Los días se cambian en ⚙ Ajustes (0 = nunca).
+
+## Resumen del día
+
+A las **20:00** te llega una notificación con las **3 mejores ofertas** de las últimas 24 h que aún no has abierto. Si no hay ninguna, no llega nada. La hora, el número de ofertas y si lo quieres se cambian en ⚙ Ajustes, donde también hay un botón para enviar uno de prueba.
+
 ## 1 · Servidor en homelab1
 
 Usa el puerto **8796**, que no choca con Wallapop (8787), Wallabot (8788) ni pi-agent (8790).

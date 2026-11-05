@@ -3,6 +3,7 @@ import json
 import os
 import sys
 import tempfile
+import time
 import unittest
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -391,6 +392,59 @@ class TestOrden(unittest.TestCase):
         self.assertEqual(t("recientes"), ["C", "B", "A"])
         self.assertEqual(t("candidatos"), ["B", "A", "C"])    # sin dato al final
         self.assertEqual(t("inventado"), ["B", "C", "A"])     # orden desconocido -> puntuación
+
+
+class TestCandidaturas(unittest.TestCase):
+    def setUp(self):
+        self.cfg = cfg_prueba()
+        self.db = DB(os.path.join(self.cfg["data_dir"], "t.db"))
+        self.oid = self.db.guardar({"uid": "a", "titulo": "Backend Java", "empresa": "Fever", "nivel": "prioritaria",
+                                    "score": 90, "estado": "nueva"})
+
+    def test_fases_y_recordatorio(self):
+        from jobradar import seguimiento
+        import datetime as dt
+        db, oid = self.db, self.oid
+        hace8 = time.time() - 8 * 86400
+        db.add_evento(oid, "aplicada", ts=hace8)
+        o = db.oferta(oid)
+        self.assertEqual((o["fase"], o["estado"]), ("aplicada", "aplicada"))
+        a_las_10 = dt.datetime.now().replace(hour=10)
+        self.assertEqual(seguimiento.recordatorios(db, self.cfg, a_las_10), 1)
+        self.assertEqual(seguimiento.recordatorios(db, self.cfg, a_las_10), 0)  # no se repite
+        al = db.alertas_desde(0)[-1]
+        self.assertEqual((al["tipo"], al["oferta_id"]), ("seguimiento", oid))
+        self.assertIn("Fever", al["texto"])
+        self.assertEqual(db.alertas_recientes(), [])  # no sale como aviso de estado en el panel
+        # apuntar algo reinicia la cuenta
+        db.add_evento(oid, "entrevista", "Con la responsable técnica")
+        self.assertEqual(seguimiento.recordatorios(db, self.cfg, a_las_10), 0)
+        self.assertEqual(seguimiento.recordatorios(db, self.cfg, a_las_10.replace(hour=23)), 0)  # de noche, nada
+        c = db.candidaturas()[0]
+        self.assertEqual((c["fase"], c["n_notas"]), ("entrevista", 1))
+        self.assertAlmostEqual(c["aplicada_ts"], hace8, delta=1)
+        # borrar el último paso vuelve a la fase anterior
+        ult = db.eventos(oid)[-1]["id"]
+        db.borrar_evento(ult)
+        self.assertEqual(db.oferta(oid)["fase"], "aplicada")
+        db.add_evento(oid, "rechazada")
+        self.assertEqual(db.sin_respuesta(0), [])  # cerrada: ya no recuerda
+
+    def test_resumen_del_dia(self):
+        from jobradar import seguimiento
+        import datetime as dt
+        db = self.db
+        db.guardar({"uid": "b", "titulo": "Otra", "empresa": "X", "nivel": "interesante", "score": 60, "estado": "nueva"})
+        db.guardar({"uid": "c", "titulo": "Vista", "empresa": "Y", "nivel": "prioritaria", "score": 95, "estado": "vista"})
+        h = dt.datetime.now().replace(hour=20, minute=5)
+        self.assertFalse(seguimiento.resumen_del_dia(db, self.cfg, h.replace(hour=12)))  # aún no es la hora
+        self.assertTrue(seguimiento.resumen_del_dia(db, self.cfg, h))
+        self.assertFalse(seguimiento.resumen_del_dia(db, self.cfg, h))  # una vez al día
+        al = db.alertas_desde(0)[-1]
+        self.assertEqual(al["tipo"], "resumen")
+        self.assertEqual([o["titulo"] for o in al["datos"]], ["Backend Java", "Otra"])  # la vista no entra
+        with self.assertRaises(ValueError):
+            seguimiento.validar_resumen({"hora": "25:00"})
 
 
 class TestDB(unittest.TestCase):

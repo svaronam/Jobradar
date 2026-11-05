@@ -47,9 +47,10 @@ header{position:sticky;top:0;z-index:5;background:var(--bg);padding:12px 16px 8p
   padding:0 10px;font-size:14px;cursor:pointer}
 .ibtn.run{color:var(--acc);border-color:var(--acc)}
 .wrap{max-width:780px;margin:0 auto}
-.vistas{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:12px 0 4px}
+.vistas{display:grid;grid-template-columns:1fr 1.25fr 0.9fr;gap:6px;margin:12px 0 4px}
 .vistas button{border:1px solid var(--line);background:var(--card);color:var(--mute);border-radius:12px;height:42px;
-  font-size:15px;font-weight:700;cursor:pointer}
+  font-size:14.5px;font-weight:700;cursor:pointer;white-space:nowrap;padding:0 6px;overflow:hidden;text-overflow:ellipsis}
+.vistas .badge{margin-left:4px}
 .vistas button.on{background:var(--accent);color:var(--on-acc);border-color:var(--accent)}
 .badge{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--p1);
   color:#fff;font-size:12px;font-weight:800;margin-left:6px;vertical-align:1px}
@@ -157,6 +158,28 @@ textarea.json{font:12px/1.4 ui-monospace,Menlo,Consolas,monospace;height:340px;m
 .orden button{flex:0 0 auto;border:1px solid var(--line);background:transparent;color:var(--mute);border-radius:999px;
   padding:5px 10px;font-size:12.5px;cursor:pointer;white-space:nowrap}
 .orden button.on{border-color:var(--acc);color:var(--acc);font-weight:700;background:color-mix(in srgb,var(--acc) 10%,transparent)}
+.cand{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px;box-shadow:var(--sombra)}
+.cand.pend{border-color:color-mix(in srgb,var(--p2) 60%,var(--line))}
+.cand .cab{grid-template-columns:44px 1fr auto}
+.fase{font-size:12px;font-weight:800;padding:3px 9px;border-radius:999px;white-space:nowrap;background:var(--chip)}
+.fase.aplicada{color:var(--acc)}.fase.entrevista{color:var(--p2)}.fase.prueba{color:var(--p1)}
+.fase.oferta{color:var(--ok);background:color-mix(in srgb,var(--ok) 16%,transparent)}
+.fase.rechazada,.fase.retirada{color:var(--mute)}
+.pipe{display:flex;align-items:center;gap:4px;margin:10px 0 6px;font-size:11.5px;color:var(--mute)}
+.pipe i{flex:1;height:3px;border-radius:2px;background:var(--line)}
+.pipe i.on{background:var(--acc)}
+.pipe span.on{color:var(--ink);font-weight:700}
+.recuerda{font-size:13px;background:color-mix(in srgb,var(--p2) 14%,transparent);border-radius:9px;padding:7px 10px;margin:6px 0}
+.tl{margin:8px 0 0;padding:0;list-style:none;font-size:13px;border-left:2px solid var(--line)}
+.tl li{position:relative;padding:3px 0 6px 12px}
+.tl li::before{content:"";position:absolute;left:-5px;top:9px;width:8px;height:8px;border-radius:50%;background:var(--acc)}
+.tl li.nota::before{background:var(--mute)}
+.tl .f{color:var(--mute);font-size:12px;font-variant-numeric:tabular-nums}
+.tl .x{border:0;background:transparent;color:var(--mute);cursor:pointer;font-size:12px;margin-left:4px}
+.tl .n{white-space:pre-wrap}
+.form-ev{display:none;margin-top:8px;background:var(--chip);border-radius:10px;padding:10px}
+.form-ev.open{display:block}
+.form-ev textarea{min-height:60px}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--accent);color:var(--on-acc);
   padding:10px 16px;border-radius:12px;font-size:14px;z-index:30;display:none;max-width:90vw}
 </style>
@@ -173,6 +196,7 @@ textarea.json{font:12px/1.4 ui-monospace,Menlo,Consolas,monospace;height:340px;m
   <div class="wrap">
     <div class="vistas">
       <button id="vOfertas" class="on">Ofertas<span class="badge" id="nNuevas" hidden></span></button>
+      <button id="vCand">Candidaturas<span class="badge" id="nCand" hidden></span></button>
       <button id="vCv">Mi CV</button>
     </div>
     <div id="barraOfertas">
@@ -197,6 +221,7 @@ textarea.json{font:12px/1.4 ui-monospace,Menlo,Consolas,monospace;height:340px;m
 <main>
   <div id="avisos"></div>
   <section id="pOfertas"><div id="lista"></div></section>
+  <section id="pCand" hidden></section>
   <section id="pCv" hidden></section>
 </main>
 
@@ -294,6 +319,8 @@ function pintarChips() {
   $("#chips").innerHTML = FILTROS.map(([k, t, , col]) =>
     `<button class="chip ${S.filtro === k ? "on" : ""}" data-f="${k}">${col ? `<span class="dot" style="background:${col}"></span>` : ""}${t}<b>${n[k] || 0}</b></button>`).join("");
   const b = $("#nNuevas"); b.hidden = !c.nuevas; b.textContent = c.nuevas || "";
+  const ca = S.est.candidaturas || {}, bc = $("#nCand");
+  bc.hidden = !ca.pendientes; bc.textContent = ca.pendientes ? "⏰" + ca.pendientes : "";
   const run = S.est.pasada && S.est.pasada.en_curso;
   $("#bPasada").classList.toggle("run", !!run);
   $("#bPasada").textContent = run ? "⟳ Buscando…" : "⟳ Buscar";
@@ -397,7 +424,8 @@ function tarjeta(o) {
   return `<article class="card ${o.estado !== "nueva" ? "leida" : ""}" id="oferta-${o.id}" data-id="${o.id}">
     <div class="score" style="--c:${col};--v:${o.score}" data-a="why">${o.score}</div>
     <div>
-      <div class="lvl" style="--c:${col}">${nt}${o.estado !== "nueva" && o.estado !== "vista" ? ` <span class="meta">· ${esc(o.estado)}</span>` : ""}
+      <div class="lvl" style="--c:${col}">${nt}${o.fase ? ` <span class="meta">· 📋 ${esc(FASE[o.fase] || o.fase)}</span>` :
+        o.estado !== "nueva" && o.estado !== "vista" ? ` <span class="meta">· ${esc(o.estado)}</span>` : ""}
         ${meta ? `<span class="meta"> · ${esc(meta)}</span>` : ""}</div>
       <div class="cab">${logoEmp(o)}<div>
         <div class="titular">${esc(o.titulo)}</div>
@@ -472,8 +500,10 @@ async function accion(id, a, btn) {
   const est = {favorita: o.estado === "favorita" ? "vista" : "favorita", aplicada: o.estado === "aplicada" ? "vista" : "aplicada",
                descartar: "descartada", restaurar: "vista"}[a];
   if (!est) return;
-  await api(`/api/ofertas/${id}/estado`, {json: {estado: est}});
+  const r = await api(`/api/ofertas/${id}/estado`, {json: {estado: est}});
   o.estado = est;
+  if (r.oferta) { o.fase = r.oferta.fase; o.fase_ts = r.oferta.fase_ts; }
+  if (est === "aplicada") toast("Añadida a Candidaturas: ahí apuntas entrevistas y respuestas");
   if (est === "descartada" && S.filtro !== "descartada") {
     S.items = S.items.filter(x => x.id !== id); $("#oferta-" + id).remove(); toast("Descartada");
   } else { $("#oferta-" + id).outerHTML = tarjeta(o); }
@@ -602,6 +632,16 @@ async function abrirAjustes() {
     <div class="ck">${["prioritaria", "interesante", "vigilar"].map(n => `<label><input type="checkbox" data-n="${n}" ${nv.includes(n) ? "checked" : ""}> ${NIV[n][0]}</label>`).join("")}</div>
     <label>No abrir ofertas cuyo título contenga (una por línea)</label><textarea id="aExT" rows="4">${esc(lineas(a.excluir_titulo))}</textarea>
     <label>Empresas excluidas (una por línea)</label><textarea id="aExE" rows="2">${esc(lineas(a.excluir_empresas))}</textarea>
+    <div class="bg"><h3>📋 Candidaturas y resumen del día</h3>
+      <label>Recordarme escribir si una candidatura lleva sin novedades (días, 0 = nunca)</label>
+      <input type="number" id="aSeg" min="0" max="60" value="${a.seguimiento_dias ?? 7}" style="max-width:110px">
+      <label style="margin-top:12px"><input type="checkbox" id="aRes" ${(a.resumen || {}).activo !== false ? "checked" : ""}>
+        Resumen diario con las mejores ofertas que aún no has abierto</label>
+      <div class="row2"><span class="pas">a las</span><input type="time" id="aResHora" value="${esc((a.resumen || {}).hora || "20:00")}" style="max-width:130px">
+        <span class="pas">con</span><input type="number" id="aResN" min="1" max="10" value="${(a.resumen || {}).n || 3}" style="max-width:80px">
+        <span class="pas">ofertas</span></div>
+      <div class="acts"><button class="btn" id="aResProbar">Enviar resumen ahora (prueba)</button></div>
+    </div>
     <label>API key de Gemini ${a.gemini_api_key_set ? `<span class="ok">✓ puesta (${esc(a.gemini_api_key_hint)})</span>` : '<span class="no">sin poner</span>'}</label>
     <div class="row2"><input type="password" id="aKey" placeholder="${a.gemini_api_key_set ? "vacío = no cambiar" : "pega aquí tu API key de Google AI Studio"}">
       <button class="btn" id="aProbar">Probar</button></div>
@@ -652,6 +692,10 @@ async function abrirAjustes() {
     ponerTema(b.dataset.t);
     $("#aTema").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
   };
+  $("#aResProbar").onclick = async () => {
+    try { await guardar(true); const r = await api("/api/resumen/probar", {json: {}}); toast(r.mensaje, 5000); }
+    catch (e) { toast(e.message, 5000); }
+  };
   $("#aCerrar").onclick = () => $("#hAjustes").classList.remove("open");
   $("#aBaremo").onclick = () => { $("#hAjustes").classList.remove("open"); abrirBaremo().catch(e => toast(e.message)); };
   if ($("#aApp")) $("#aApp").onclick = () => Android.openSettings();
@@ -666,6 +710,8 @@ async function abrirAjustes() {
                frecuencia: leerFrec(),
                cv_desde_score: +$("#aCv").value, excluir_titulo: sp($("#aExT").value), excluir_empresas: sp($("#aExE").value),
                notificar_niveles: [...document.querySelectorAll("[data-n]")].filter(x => x.checked).map(x => x.dataset.n),
+               seguimiento_dias: +$("#aSeg").value || 0,
+               resumen: {activo: $("#aRes").checked, hora: $("#aResHora").value || "20:00", n: +$("#aResN").value || 3},
                gemini_model: $("#aModel").value.trim() || "gemini-3.8-flash", gemini_api_key: $("#aKey").value.trim()};
     const r = await api("/api/ajustes", {json: b});
     if (!silencio) {
@@ -817,6 +863,95 @@ $("#baremoIn").addEventListener("click", async e => {
 $("#hBaremo").addEventListener("click", e => { if (e.target.id === "hBaremo") e.currentTarget.classList.remove("open"); });
 $("#bBaremo").onclick = () => abrirBaremo().catch(e => toast(e.message));
 
+
+// ----------------------------------------------------------------- Candidaturas
+const FASE = {aplicada: "Aplicada", entrevista: "Entrevista", prueba: "Prueba técnica", oferta: "Oferta",
+              rechazada: "Rechazada", retirada: "Me retiré"};
+const ACTIVAS = ["aplicada", "entrevista", "prueba"];
+const SC = {filtro: "activas", items: [], dias: 7, abiertos: new Set()};
+const fecha = ts => ts ? new Date(ts * 1000).toLocaleDateString("es", {day: "numeric", month: "short"}) : "—";
+const diasDesde = ts => ts ? Math.floor((Date.now() / 1000 - ts) / 86400) : null;
+const haceDias = ts => { const d = diasDesde(ts); return d == null ? "" : d === 0 ? "hoy" : d === 1 ? "ayer" : `hace ${d} días`; };
+
+async function pintarCand() {
+  try { const r = await api("/api/candidaturas"); SC.items = r.items; SC.dias = r.seguimiento_dias; }
+  catch (e) { $("#pCand").innerHTML = `<div class="vacio">${esc(e.message)}</div>`; return; }
+  const cuenta = f => SC.items.filter(f).length;
+  const filtros = [["activas", "En curso", c => ACTIVAS.includes(c.fase)], ["oferta", "🎉 Con oferta", c => c.fase === "oferta"],
+                   ["cerradas", "Cerradas", c => ["rechazada", "retirada"].includes(c.fase)], ["todas", "Todas", () => true]];
+  const actual = filtros.find(f => f[0] === SC.filtro) || filtros[0];
+  const lista = SC.items.filter(actual[2]);
+  const pend = SC.items.filter(c => c.pendiente).length;
+  $("#pCand").innerHTML = `<div class="stats">${filtros.map(([k, t, f]) =>
+      `<button class="chip ${SC.filtro === k ? "on" : ""}" data-cf="${k}">${t}<b>${cuenta(f)}</b></button>`).join("")}</div>
+    ${pend ? `<div class="recuerda">⏰ ${pend === 1 ? "Una candidatura lleva" : `${pend} candidaturas llevan`} ${SC.dias}+ días sin novedades: buen momento para escribir al recruiter.</div>` : ""}
+    ${lista.map(tarjetaCand).join("") || `<div class="vacio">${SC.items.length ? "Nada en este grupo." :
+      "Aún no hay candidaturas.<br>Cuando te postules a una oferta, pulsa <b>✓ Aplicada</b> en su tarjeta y su seguimiento aparecerá aquí."}</div>`}`;
+}
+
+function tarjetaCand(c) {
+  const evs = c.eventos || [];
+  const orden = ["aplicada", "entrevista", "prueba", "oferta"];
+  const llegada = Math.max(...evs.filter(e => e.fase).map(e => orden.indexOf(e.fase)), 0);
+  const cerrada = ["rechazada", "retirada"].includes(c.fase);
+  const pipe = orden.map((f, i) => `${i ? `<i class="${i <= llegada && !cerrada ? "on" : ""}"></i>` : ""}<span class="${i <= llegada ? "on" : ""}">${FASE[f]}</span>`).join("");
+  const tl = evs.map(e => `<li class="${e.fase ? "" : "nota"}"><span class="f">${fecha(e.ts)}</span>
+      ${e.fase ? `<b>${esc(FASE[e.fase] || e.fase)}</b>` : ""}${e.nota ? `<div class="n">${esc(e.nota)}</div>` : ""}
+      <button class="x" data-borrar="${e.id}" title="Borrar este paso">✕</button></li>`).join("");
+  const siguientes = cerrada ? [] : ["entrevista", "prueba", "oferta", "rechazada", "retirada"].filter(f => f !== c.fase);
+  const icono = {entrevista: "🗣", prueba: "🧪", oferta: "🎉", rechazada: "✕", retirada: "↩"};
+  return `<article class="cand ${c.pendiente ? "pend" : ""}" data-cid="${c.id}">
+    <div class="cab">${logoEmp(c)}<div><div class="titular" style="font-size:16px">${esc(c.titulo)}</div>
+      <div class="sub"><b>${esc(c.empresa)}</b><span>${esc(c.lugar || "")}</span></div></div>
+      <span class="fase ${esc(c.fase)}">${esc(FASE[c.fase] || c.fase)}</span></div>
+    <div class="pipe">${pipe}</div>
+    <div class="pas">Aplicada el ${fecha(c.aplicada_ts)} · último movimiento ${haceDias(c.ultimo_ts)}</div>
+    ${c.pendiente ? `<div class="recuerda">⏰ ${diasDesde(c.ultimo_ts)} días sin novedades. Escribe al recruiter o apunta lo que sepas.</div>` : ""}
+    <ul class="tl">${tl}</ul>
+    <div class="acts">
+      ${siguientes.map(f => `<button class="btn" data-fase="${f}">${icono[f]} ${FASE[f]}</button>`).join("")}
+      <button class="btn" data-fase="">📝 Nota</button>
+      <button class="btn pri" data-ir="linkedin">LinkedIn</button>
+      ${c.cv_archivo ? `<button class="btn cv" data-ir="cv">📄 CV enviado</button>` : ""}
+    </div>
+    <div class="form-ev" data-form>
+      <div class="pas" data-titulo></div>
+      <textarea placeholder="Nota (opcional): con quién hablaste, qué te preguntaron, sueldo que comentaron…"></textarea>
+      <div class="row2" style="margin-top:6px"><span class="pas">Fecha</span><input type="date" value="${new Date().toISOString().slice(0, 10)}" style="max-width:170px">
+        <button class="btn pri" data-guardar>Guardar</button><button class="btn" data-cancelar>Cancelar</button></div>
+    </div>
+  </article>`;
+}
+
+$("#pCand").addEventListener("click", async ev => {
+  const t = ev.target;
+  const cf = t.closest("[data-cf]");
+  if (cf) { SC.filtro = cf.dataset.cf; pintarCand(); return; }
+  const card = t.closest("[data-cid]"); if (!card) return;
+  const id = +card.dataset.cid, c = SC.items.find(x => x.id === id), form = card.querySelector("[data-form]");
+  if (t.dataset.fase !== undefined) {
+    form.dataset.fase = t.dataset.fase;
+    form.querySelector("[data-titulo]").textContent = t.dataset.fase ? `Pasar a: ${FASE[t.dataset.fase]}` : "Añadir una nota";
+    form.classList.add("open"); form.querySelector("textarea").focus(); return;
+  }
+  if (t.dataset.cancelar !== undefined) { form.classList.remove("open"); return; }
+  if (t.dataset.guardar !== undefined) {
+    t.disabled = true;
+    try {
+      await api(`/api/ofertas/${id}/fase`, {json: {fase: form.dataset.fase || null, nota: form.querySelector("textarea").value,
+                                                   fecha: form.querySelector("input[type=date]").value}});
+      toast(form.dataset.fase === "oferta" ? "🎉 ¡Enhorabuena!" : "Apuntado"); pintarCand(); refrescarEstado();
+    } catch (e) { toast(e.message, 5000); t.disabled = false; }
+    return;
+  }
+  if (t.dataset.borrar) {
+    if (!confirm("¿Borrar este paso del historial?")) return;
+    await api(`/api/eventos/${t.dataset.borrar}/borrar`, {json: {}}); pintarCand(); refrescarEstado(); return;
+  }
+  if (t.dataset.ir === "linkedin") abrirFuera(c.url);
+  if (t.dataset.ir === "cv") abrirPdf(`/api/ofertas/${id}/cv.pdf`, c.cv_archivo);
+});
+
 // ----------------------------------------------------------------- eventos
 $("#chips").addEventListener("click", e => { const b = e.target.closest("[data-f]"); if (!b) return; S.filtro = b.dataset.f; cargar(); });
 $("#segModo").addEventListener("click", e => {
@@ -840,10 +975,14 @@ $("#lista").addEventListener("click", e => {
 });
 function vista(v) {
   S.vista = v;
-  $("#vOfertas").classList.toggle("on", v === "ofertas"); $("#vCv").classList.toggle("on", v === "cv");
-  $("#pOfertas").hidden = v !== "ofertas"; $("#pCv").hidden = v !== "cv"; $("#barraOfertas").hidden = v !== "ofertas";
+  for (const [k, b, p] of [["ofertas", "#vOfertas", "#pOfertas"], ["cand", "#vCand", "#pCand"], ["cv", "#vCv", "#pCv"]]) {
+    $(b).classList.toggle("on", v === k); $(p).hidden = v !== k;
+  }
+  $("#barraOfertas").hidden = v !== "ofertas";
   if (v === "cv") pintarCv();
+  if (v === "cand") pintarCand();
 }
+$("#vCand").onclick = () => vista("cand");
 $("#vOfertas").onclick = () => vista("ofertas");
 $("#vCv").onclick = () => vista("cv");
 $("#bAjustes").onclick = () => abrirAjustes().catch(e => toast(e.message));
@@ -861,8 +1000,11 @@ function vigilarPasada() {
 
 // enlace desde una notificación: #oferta-123 → la abre y la resalta
 async function irAncla() {
+  if (location.hash === "#candidaturas") { vista("cand"); return; }
+  if (location.hash === "#cv") { vista("cv"); return; }
   const m = location.hash.match(/^#oferta-(\d+)/);
   if (!m) return;
+  if (S.vista !== "ofertas") vista("ofertas");
   const id = +m[1];
   if (!S.items.some(o => o.id === id)) {
     try { const o = await api("/api/ofertas/" + id); S.items.unshift(o); pintarLista(); } catch (e) { return; }
@@ -879,6 +1021,7 @@ async function irAncla() {
 window.addEventListener("hashchange", irAncla);
 avisarTemaApp();
 if (location.hash === "#cv") vista("cv");
+if (location.hash === "#candidaturas") vista("cand");
 cargar().then(() => { irAncla(); if (S.est && S.est.pasada && S.est.pasada.en_curso) vigilarPasada(); });
 </script>
 </body>

@@ -11,8 +11,8 @@ android {
         applicationId = "com.svaronam.jobradar"
         minSdk = 26
         targetSdk = 34
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 3
+        versionName = "1.2.0"
     }
 
     // Firma fija: cada APK nueva de GitHub Actions se instala encima de la anterior sin desinstalar.

@@ -52,7 +52,7 @@ class Comprobador(ctx: Context, params: WorkerParameters) : Worker(ctx, params) 
                 synchronized(cerrojo) {
                     val als = json.optJSONArray("alertas")
                     if (p.ultimaAlertaId >= 0 && als != null) {
-                        for (i in 0 until minOf(als.length(), 3)) Avisos.alerta(ctx, als.getJSONObject(i))
+                        for (i in 0 until minOf(als.length(), 6)) Avisos.alerta(ctx, als.getJSONObject(i))
                     }
                     p.ultimaAlertaId = maxOf(p.ultimaAlertaId, json.optLong("max_alerta", 0))
 

@@ -31,12 +31,20 @@ CREATE TABLE IF NOT EXISTS pasadas (
 CREATE TABLE IF NOT EXISTS alertas (
   id INTEGER PRIMARY KEY AUTOINCREMENT, clave TEXT UNIQUE, texto TEXT, ts REAL
 );
+-- historial de cada candidatura: aplicada, entrevista, prueba, oferta, rechazada, retirada, o una nota suelta
+CREATE TABLE IF NOT EXISTS eventos (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, oferta_id INTEGER NOT NULL, ts REAL, fase TEXT, nota TEXT
+);
+CREATE INDEX IF NOT EXISTS ix_ev_oferta ON eventos(oferta_id);
 """
+FASES = ["aplicada", "entrevista", "prueba", "oferta", "rechazada", "retirada"]
+FASES_ACTIVAS = ["aplicada", "entrevista", "prueba"]  # las que esperan respuesta: llevan recordatorio
 JSON_COLS = ("desglose", "encaje", "cv_cambios")
-COLS_NUEVAS = {"logo_url": "TEXT", "logo": "TEXT"}  # logo: archivo en data/logos/
+COLS_NUEVAS = {"logo_url": "TEXT", "logo": "TEXT",  # logo: archivo en data/logos/
+               "fase": "TEXT", "fase_ts": "REAL"}     # fase de la candidatura y desde cuándo
 LISTA_COLS = ("id, uid, titulo, empresa, lugar, km, modalidad, fecha_pub, url, sueldo_txt, sueldo_min, sueldo_max, "
               "candidatos, seniority, tipo_empleo, anios_pedidos, idioma, rol, score, nivel, desglose, encaje, filtro, "
-              "estado, cv_estado, cv_idioma, cv_archivo, cv_cambios, cv_error, creado, logo")
+              "estado, cv_estado, cv_idioma, cv_archivo, cv_cambios, cv_error, creado, logo, fase, fase_ts")
 
 
 class DB:
@@ -51,6 +59,10 @@ class DB:
                     c.execute(f"ALTER TABLE ofertas ADD COLUMN {col} {tipo}")
             if "tipo" not in {r["name"] for r in c.execute("PRAGMA table_info(pasadas)")}:
                 c.execute("ALTER TABLE pasadas ADD COLUMN tipo TEXT DEFAULT 'completa'")
+            tiene_al = {r["name"] for r in c.execute("PRAGMA table_info(alertas)")}
+            for col, tipo in {"tipo": "TEXT", "oferta_id": "INTEGER", "datos": "TEXT"}.items():
+                if col not in tiene_al:  # tipo: NULL = estado del radar · resumen · seguimiento
+                    c.execute(f"ALTER TABLE alertas ADD COLUMN {col} {tipo}")
 
     @contextlib.contextmanager
     def _c(self):
@@ -244,19 +256,101 @@ class DB:
                           "ORDER BY id DESC LIMIT 1").fetchone()
             return r["fin"] if r else None
 
-    def add_alerta(self, clave, texto):
+    def add_alerta(self, clave, texto, tipo=None, oferta_id=None, datos=None):
         with self.lock, self._c() as c:
-            return c.execute("INSERT OR IGNORE INTO alertas (clave, texto, ts) VALUES (?,?,?)",
-                             (clave, texto, time.time())).rowcount > 0
+            return c.execute("INSERT OR IGNORE INTO alertas (clave, texto, ts, tipo, oferta_id, datos) VALUES (?,?,?,?,?,?)",
+                             (clave, texto, time.time(), tipo, oferta_id,
+                              json.dumps(datos, ensure_ascii=False) if datos is not None else None)).rowcount > 0
+
+    @staticmethod
+    def _alerta(r):
+        d = dict(r)
+        if d.get("datos"):
+            try:
+                d["datos"] = json.loads(d["datos"])
+            except ValueError:
+                pass
+        return d
 
     def alertas_desde(self, desde):
         with self._c() as c:
-            return [dict(r) for r in c.execute("SELECT * FROM alertas WHERE id>? ORDER BY id LIMIT 20", (desde,))]
+            return [self._alerta(r) for r in c.execute("SELECT * FROM alertas WHERE id>? ORDER BY id LIMIT 20", (desde,))]
 
-    def alertas_recientes(self, horas=72):
+    def alertas_recientes(self, horas=72, tipo=None):
+        """tipo None = solo las de estado del radar (las que salen como aviso en el panel)."""
         with self._c() as c:
-            return [dict(r) for r in c.execute("SELECT * FROM alertas WHERE ts>? ORDER BY id DESC",
-                                               (time.time() - horas * 3600,))]
+            sql = "SELECT * FROM alertas WHERE ts>? AND " + ("tipo IS NULL" if tipo is None else "tipo=?")
+            args = [time.time() - horas * 3600] + ([] if tipo is None else [tipo])
+            return [self._alerta(r) for r in c.execute(sql + " ORDER BY id DESC", args)]
+
+    # ------------------------------------------------------------------ candidaturas
+    def add_evento(self, oid, fase=None, nota=None, ts=None):
+        """Apunta un paso (o una nota) en la candidatura. Con fase, la oferta pasa a esa fase."""
+        ts = ts or time.time()
+        with self.lock, self._c() as c:
+            eid = c.execute("INSERT INTO eventos (oferta_id, ts, fase, nota) VALUES (?,?,?,?)",
+                            (oid, ts, fase, (nota or "").strip() or None)).lastrowid
+            if fase:
+                c.execute("UPDATE ofertas SET fase=?, fase_ts=? WHERE id=?", (fase, ts, oid))
+                if fase == "aplicada":
+                    c.execute("UPDATE ofertas SET estado='aplicada' WHERE id=?", (oid,))
+            return eid
+
+    def borrar_evento(self, eid):
+        with self.lock, self._c() as c:
+            r = c.execute("SELECT oferta_id FROM eventos WHERE id=?", (eid,)).fetchone()
+            if not r:
+                return
+            c.execute("DELETE FROM eventos WHERE id=?", (eid,))
+            # la fase vuelve a ser la del último paso que quede
+            u = c.execute("SELECT fase, ts FROM eventos WHERE oferta_id=? AND fase IS NOT NULL ORDER BY ts DESC, id DESC "
+                          "LIMIT 1", (r["oferta_id"],)).fetchone()
+            c.execute("UPDATE ofertas SET fase=?, fase_ts=? WHERE id=?",
+                      (u["fase"] if u else None, u["ts"] if u else None, r["oferta_id"]))
+
+    def eventos(self, oid):
+        with self._c() as c:
+            return [dict(r) for r in c.execute("SELECT * FROM eventos WHERE oferta_id=? ORDER BY ts, id", (oid,))]
+
+    def quitar_candidatura(self, oid):
+        """Desmarcar «Aplicada» por error: se borra el seguimiento de esa oferta."""
+        with self.lock, self._c() as c:
+            c.execute("DELETE FROM eventos WHERE oferta_id=?", (oid,))
+            c.execute("UPDATE ofertas SET fase=NULL, fase_ts=NULL WHERE id=?", (oid,))
+
+    def candidaturas(self):
+        """Todas las ofertas con candidatura, con su primer y último movimiento."""
+        with self._c() as c:
+            filas = c.execute(f"""SELECT {LISTA_COLS},
+                (SELECT MIN(ts) FROM eventos e WHERE e.oferta_id=o.id AND e.fase='aplicada') AS aplicada_ts,
+                (SELECT MAX(ts) FROM eventos e WHERE e.oferta_id=o.id) AS ultimo_ts,
+                (SELECT COUNT(*) FROM eventos e WHERE e.oferta_id=o.id AND e.nota IS NOT NULL) AS n_notas
+                FROM ofertas o WHERE fase IS NOT NULL ORDER BY ultimo_ts DESC""").fetchall()
+            return [self._dict(r) for r in filas]
+
+    def sin_respuesta(self, dias):
+        """Candidaturas en fase activa sin ningún movimiento desde hace 'dias'. Devuelve (oferta, id último evento)."""
+        with self._c() as c:
+            filas = c.execute(f"""SELECT o.id, o.titulo, o.empresa, o.fase,
+                (SELECT MAX(ts) FROM eventos e WHERE e.oferta_id=o.id) AS ultimo_ts,
+                (SELECT MAX(id) FROM eventos e WHERE e.oferta_id=o.id) AS ultimo_ev
+                FROM ofertas o WHERE fase IN ({','.join('?' * len(FASES_ACTIVAS))})""", FASES_ACTIVAS).fetchall()
+            limite = time.time() - dias * 86400
+            return [dict(r) for r in filas if r["ultimo_ts"] and r["ultimo_ts"] <= limite]
+
+    def resumen_candidaturas(self, dias):
+        with self._c() as c:
+            activas = c.execute(f"SELECT COUNT(*) n FROM ofertas WHERE fase IN ({','.join('?' * len(FASES_ACTIVAS))})",
+                                FASES_ACTIVAS).fetchone()["n"]
+            total = c.execute("SELECT COUNT(*) n FROM ofertas WHERE fase IS NOT NULL").fetchone()["n"]
+        return {"activas": activas, "total": total, "pendientes": len(self.sin_respuesta(dias)) if dias else 0}
+
+    def mejores_sin_abrir(self, desde_ts, n, niveles):
+        with self._c() as c:
+            return [dict(r) for r in c.execute(
+                f"SELECT id, titulo, empresa, score, nivel, modalidad, sueldo_min, sueldo_max FROM ofertas "
+                f"WHERE creado>=? AND estado='nueva' AND nivel IN ({','.join('?' * len(niveles))}) "
+                f"ORDER BY score DESC LIMIT ?", [desde_ts, *niveles, n])]
 
     def max_alerta(self):
         with self._c() as c:

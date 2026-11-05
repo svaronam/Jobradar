@@ -54,6 +54,11 @@ DEFAULT = {
     "gemini_fallback_models": ["gemini-3.5-flash", "gemini-2.5-flash"],
     "cv_desde_score": 55,
 
+    # recordatorio si una candidatura lleva estos días sin movimiento (0 = nunca)
+    "seguimiento_dias": 7,
+    # resumen diario con las mejores ofertas del día que aún no has abierto
+    "resumen": {"activo": True, "hora": "20:00", "n": 3},
+
     "pesos": {},
     "niveles": {"prioritaria": 75, "interesante": 58, "vigilar": 40},
     "notificar_niveles": ["prioritaria", "interesante", "vigilar"],
@@ -61,7 +66,7 @@ DEFAULT = {
 
 # lo que se puede cambiar desde la app (se guarda en data/ajustes.json)
 EDITABLES = {"palabras_clave", "horas_pasada", "frecuencia", "perfil", "excluir_titulo", "excluir_empresas", "gemini_api_key",
-             "gemini_model", "cv_desde_score", "notificar_niveles", "pesos", "niveles"}
+             "gemini_model", "cv_desde_score", "notificar_niveles", "pesos", "niveles", "seguimiento_dias", "resumen"}
 
 
 def _merge(a, b):

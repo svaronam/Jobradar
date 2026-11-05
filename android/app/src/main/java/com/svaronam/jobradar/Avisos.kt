@@ -20,6 +20,8 @@ object Avisos {
     const val CANAL_RESUMEN = "resumen"
     const val CANAL_ESTADO = "estado"
     const val CANAL_FIJA = "fija"
+    const val CANAL_DIA = "resumen_dia"
+    const val CANAL_CAND = "candidaturas"
     const val ID_FIJA = 4
 
     fun crearCanales(ctx: Context) {
@@ -36,6 +38,12 @@ object Avisos {
         nm.createNotificationChannel(NotificationChannel(CANAL_ESTADO, "⚠ Estado del radar",
             NotificationManager.IMPORTANCE_DEFAULT).apply {
             description = "Si LinkedIn limita las peticiones o cambia su página"
+        })
+        nm.createNotificationChannel(NotificationChannel(CANAL_DIA, "📰 Resumen del día",
+            NotificationManager.IMPORTANCE_DEFAULT).apply { description = "Las mejores ofertas del día que aún no has abierto" })
+        nm.createNotificationChannel(NotificationChannel(CANAL_CAND, "📋 Candidaturas",
+            NotificationManager.IMPORTANCE_DEFAULT).apply {
+            description = "Recordatorios cuando una candidatura lleva días sin novedades"
         })
         nm.createNotificationChannel(NotificationChannel(CANAL_FIJA, "Avisos al momento (fija)",
             NotificationManager.IMPORTANCE_MIN).apply {
@@ -150,6 +158,10 @@ object Avisos {
     }
 
     fun alerta(ctx: Context, a: JSONObject) {
+        when (a.optString("tipo")) {
+            "resumen" -> return resumenDia(ctx, a)
+            "seguimiento" -> return recordatorio(ctx, a)
+        }
         val n = Notification.Builder(ctx, CANAL_ESTADO)
             .setSmallIcon(R.drawable.ic_stat)
             .setColor(Color.parseColor("#B7791F"))
@@ -160,6 +172,44 @@ object Avisos {
             .setContentIntent(abrirApp(ctx, ""))
             .build()
         ctx.getSystemService(NotificationManager::class.java).notify(900000 + a.optInt("id"), n)
+    }
+
+    /** "📰 3 ofertas de hoy sin abrir" con una línea por oferta. */
+    private fun resumenDia(ctx: Context, a: JSONObject) {
+        val ofertas = a.optJSONArray("datos")
+        val estilo = Notification.InboxStyle()
+        val total = ofertas?.length() ?: 0
+        for (i in 0 until total) {
+            val o = ofertas!!.getJSONObject(i)
+            estilo.addLine("${o.optInt("score")} · ${o.optString("titulo")} · ${o.optString("empresa")}")
+        }
+        val titulo = if (total == 1) "📰 La mejor oferta de hoy sin abrir" else "📰 Las $total mejores ofertas de hoy sin abrir"
+        estilo.setBigContentTitle(titulo)
+        val primera = if (total > 0) ofertas!!.getJSONObject(0) else null
+        val n = Notification.Builder(ctx, CANAL_DIA)
+            .setSmallIcon(R.drawable.ic_stat)
+            .setColor(Color.parseColor("#2563EB"))
+            .setContentTitle(titulo)
+            .setContentText(primera?.let { "${it.optInt("score")} · ${it.optString("titulo")} · ${it.optString("empresa")}" } ?: "")
+            .setStyle(estilo)
+            .setAutoCancel(true)
+            .setContentIntent(abrirApp(ctx, primera?.let { "oferta-${it.optLong("id")}" } ?: ""))
+            .build()
+        ctx.getSystemService(NotificationManager::class.java).notify(5, n)
+    }
+
+    /** "⏰ Hace 7 días que aplicaste a… escribe al recruiter": abre la pestaña Candidaturas. */
+    private fun recordatorio(ctx: Context, a: JSONObject) {
+        val n = Notification.Builder(ctx, CANAL_CAND)
+            .setSmallIcon(R.drawable.ic_stat)
+            .setColor(Color.parseColor("#B7791F"))
+            .setContentTitle("⏰ Candidatura sin novedades")
+            .setContentText(a.optString("texto"))
+            .setStyle(Notification.BigTextStyle().bigText(a.optString("texto")))
+            .setAutoCancel(true)
+            .setContentIntent(abrirApp(ctx, "candidaturas"))
+            .build()
+        ctx.getSystemService(NotificationManager::class.java).notify(700000 + a.optInt("oferta_id"), n)
     }
 
     fun prueba(ctx: Context) {

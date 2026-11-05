@@ -8,7 +8,8 @@ import time
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from . import config, cv, gemini, planificador, puntuar, scan
+from . import config, cv, gemini, planificador, puntuar, scan, seguimiento
+from .db import FASES
 
 log = logging.getLogger("jobradar")
 STATIC = os.path.join(os.path.dirname(__file__), "static")
@@ -88,7 +89,17 @@ def make_handler(db, cfg):
                                                       limite=int(q1("limite", 300)), orden=q1("orden", "puntuacion"))})
             if len(parts) == 3 and parts[:2] == ["api", "ofertas"]:
                 o = db.oferta(int(parts[2]))
+                if o:
+                    o["eventos"] = db.eventos(o["id"])
                 return self._json(o) if o else self._json({"error": "no existe"}, 404)
+            if u.path == "/api/candidaturas":
+                dias = int(cfg.get("seguimiento_dias", 7) or 0)
+                pend = {x["id"] for x in db.sin_respuesta(dias)} if dias else set()
+                items = db.candidaturas()
+                for c in items:
+                    c["eventos"] = db.eventos(c["id"])
+                    c["pendiente"] = c["id"] in pend
+                return self._json({"items": items, "seguimiento_dias": dias})
             if len(parts) == 4 and parts[:2] == ["api", "ofertas"] and parts[3] == "cv.pdf":
                 o = db.oferta(int(parts[2]))
                 if not o or not o.get("cv_archivo"):
@@ -116,6 +127,7 @@ def make_handler(db, cfg):
             if u.path == "/api/estado":
                 return self._json({"version": VERSION, "pasada": scan.estado, "pasadas": db.pasadas(8),
                                    "contadores": db.contar(), "frecuencia": planificador.describir(cfg),
+                                   "candidaturas": db.resumen_candidaturas(int(cfg.get("seguimiento_dias", 7) or 0)),
                                    "proxima": planificador.proxima(cfg, _ultima(db, "completa")).timestamp(),
                                    "proxima_rapida": (lambda t: t.timestamp() if t else None)(_proxima_rapida(db, cfg)),
                                    "pasadas_al_dia": planificador.pasadas_al_dia(cfg),
@@ -164,8 +176,27 @@ def make_handler(db, cfg):
                         est = self._body().get("estado")
                         if est not in ESTADOS:
                             return self._json({"error": "estado no válido"}, 400)
+                        antes = db.oferta(oid)
                         db.actualizar(oid, estado=est)
-                        return self._json({"ok": True})
+                        if est == "aplicada" and not antes.get("fase"):
+                            db.add_evento(oid, "aplicada")  # empieza el seguimiento
+                        elif est != "aplicada" and antes.get("fase") == "aplicada" and len(db.eventos(oid)) <= 1:
+                            db.quitar_candidatura(oid)  # desmarcada por error antes de avanzar
+                        return self._json({"ok": True, "oferta": db.oferta(oid)})
+                    if parts[3] == "fase":
+                        b = self._body()
+                        fase = b.get("fase") or None
+                        if fase and fase not in FASES:
+                            return self._json({"error": "fase no válida"}, 400)
+                        if not fase and not (b.get("nota") or "").strip():
+                            return self._json({"error": "Escribe una nota o elige una fase"}, 400)
+                        ts = None
+                        if b.get("fecha"):  # "2026-11-05": por si lo apuntas días después
+                            ts = dt.datetime.fromisoformat(b["fecha"][:10]).replace(hour=12).timestamp()
+                        db.add_evento(oid, fase, b.get("nota"), ts)
+                        o = db.oferta(oid)
+                        o["eventos"] = db.eventos(oid)
+                        return self._json({"ok": True, "oferta": o})
                     if parts[3] == "cv":
                         idioma = self._body().get("idioma") or None
                         nombre = cv.adaptar(db, cfg, oid, idioma)
@@ -180,10 +211,21 @@ def make_handler(db, cfg):
                         cv.guardar_json(cfg, idioma, self._body())
                         return self._json({"ok": True, "cv": cv.info(cfg)})
 
+                if len(parts) == 4 and parts[:2] == ["api", "eventos"] and parts[3] == "borrar":
+                    db.borrar_evento(int(parts[2]))
+                    return self._json({"ok": True})
+                if u.path == "/api/resumen/probar":
+                    ok = seguimiento.resumen_del_dia(db, cfg, forzar=True)
+                    return self._json({"ok": True, "mensaje": "Resumen enviado: llegará al móvil en unos segundos" if ok
+                                       else "No hay ofertas nuevas de hoy sin abrir para el resumen"})
                 if u.path == "/api/ajustes":
                     b = self._body()
                     if "gemini_api_key" in b and not (b["gemini_api_key"] or "").strip():
                         b.pop("gemini_api_key")  # vacío = no cambiar
+                    if "resumen" in b:
+                        b["resumen"] = seguimiento.validar_resumen(b["resumen"])
+                    if "seguimiento_dias" in b:
+                        b["seguimiento_dias"] = max(0, min(60, int(b["seguimiento_dias"] or 0)))
                     if "frecuencia" in b or "horas_pasada" in b:
                         b["frecuencia"], b["horas_pasada"] = planificador.validar(
                             b.get("frecuencia") or planificador.frecuencia(cfg), b.get("horas_pasada", cfg["horas_pasada"]))
@@ -268,6 +310,10 @@ def programador(db, cfg):
                         scan.pasada(db, cfg, rapida=True)
         except Exception:  # noqa: BLE001 - que un fallo no pare las búsquedas para siempre
             log.exception("Error en el programador")
+        try:
+            seguimiento.tareas(db, cfg)
+        except Exception:  # noqa: BLE001
+            log.exception("Error en el resumen o los recordatorios")
         time.sleep(20)
 
 
