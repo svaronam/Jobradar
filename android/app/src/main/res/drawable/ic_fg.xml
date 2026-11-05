@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <!-- maletín -->
+    <path android:fillColor="#FFE8E4DA" android:fillType="evenOdd"
+        android:pathData="M46,36h16a4,4 0 0,1 4,4v4h8a5,5 0 0,1 5,5v20a5,5 0 0,1 -5,5H34a5,5 0 0,1 -5,-5V49a5,5 0 0,1 5,-5h8v-4a4,4 0 0,1 4,-4zM47,40v4h14v-4z"/>
+    <!-- radar -->
+    <path android:fillColor="#FF0F1720" android:pathData="M54,59m-11,0a11,11 0 1,1 22,0a11,11 0 1,1 -22,0"/>
+    <path android:strokeColor="#FF6EA8FE" android:strokeWidth="2.2" android:fillColor="#00000000"
+        android:pathData="M54,59m-8,0a8,8 0 1,1 16,0a8,8 0 1,1 -16,0"/>
+    <path android:fillColor="#FF6EA8FE" android:pathData="M54,59L60.5,53.2A8.6,8.6 0 0,1 62.6,59Z"/>
+    <path android:fillColor="#FF6EA8FE" android:pathData="M54,59m-1.8,0a1.8,1.8 0 1,1 3.6,0a1.8,1.8 0 1,1 -3.6,0"/>
+</vector>

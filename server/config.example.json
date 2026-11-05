@@ -1,0 +1,39 @@
+{
+  "_comentario": "Copia este archivo como config.json. Las claves que empiezan por _ se ignoran. Lo que cambies desde la app (sueldo, palabras clave, API key...) se guarda en data/ajustes.json y manda sobre esto.",
+
+  "host": "0.0.0.0",
+  "puerto": 8796,
+  "token": "",
+  "_token": "Si pones un token, la app y la web lo pedirán.",
+
+  "frecuencia": {"modo": "horas", "cada_horas": 3, "desde": "08:00", "hasta": "22:00", "dias": [0, 1, 2, 3, 4, 5, 6]},
+  "horas_pasada": ["08:40", "13:40", "19:40"],
+  "_frecuencia": "modo 'horas' = a las horas_pasada · modo 'intervalo' = cada cada_horas (mínimo 1) entre desde y hasta. dias: 0 = lunes … 6 = domingo. Mejor cambiarlo desde la app (⚙ → Cuándo buscar). Cada pasada son ~35 peticiones + una por oferta nueva.",
+
+  "palabras_clave": ["java spring", "desarrollador backend java", "backend developer java", "spring boot",
+                     "analista programador", "analista funcional", "python backend"],
+
+  "_modos": "Cada palabra clave se busca en cada modo. f_WT: 1 presencial, 2 remoto, 3 híbrido. distance en millas. Los km de verdad se calculan desde Limpias.",
+  "modos": [
+    {"nombre": "remoto", "location": "España", "geoId": "105646813", "f_WT": "2", "paginas": 2},
+    {"nombre": "hibrido", "location": "Cantabria, España", "f_WT": "3", "paginas": 1},
+    {"nombre": "presencial", "location": "Cantabria, España", "f_WT": "1", "paginas": 1},
+    {"nombre": "hibrido", "location": "Bilbao, País Vasco, España", "distance": "25", "f_WT": "3", "paginas": 1},
+    {"nombre": "presencial", "location": "Bilbao, País Vasco, España", "distance": "25", "f_WT": "1", "paginas": 1}
+  ],
+
+  "perfil": {
+    "origen": "Limpias",
+    "zona_max_km": 80,
+    "anios_experiencia": 5,
+    "sueldo_minimo": 35000,
+    "sueldo_objetivo": 45000
+  },
+
+  "gemini_api_key": "",
+  "gemini_model": "gemini-3.8-flash",
+  "cv_desde_score": 55,
+
+  "pesos": {},
+  "_pesos": "Para cambiar el baremo sin tocar código. Ej: {\"remoto\": 35, \"sueldo\": {\"por_debajo\": -8}, \"rol\": {\"analista_funcional\": 18}}"
+}

@@ -1,0 +1,761 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1720">
+<title>JobRadar</title>
+<style>
+:root{
+  --bg:#f4f1ea; --card:#fffdf8; --ink:#1b1f24; --mute:#6b6f76; --line:#e3ddd0;
+  --p1:#c2410c; --p2:#b7791f; --p3:#2f6f9f; --p4:#8a8f96; --ok:#2f7d4f; --bad:#b4232c; --acc:#2563eb;
+  --chip:#ece6d9; --accent:#1b1f24;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#0f1720; --card:#16202b; --ink:#e8e4da; --mute:#97a0ab; --line:#243140;
+    --p1:#f07a3c; --p2:#e2b04a; --p3:#6aa9d8; --p4:#7c8792; --ok:#5fbf86; --bad:#f2777f; --acc:#6ea8fe;
+    --chip:#1e2a37; --accent:#e8e4da; }
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.45 "Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
+header{position:sticky;top:0;z-index:5;background:var(--bg);padding:12px 16px 8px;border-bottom:1px solid var(--line)}
+.top{display:flex;align-items:center;gap:8px;max-width:780px;margin:0 auto}
+.logo{font-weight:800;letter-spacing:-.02em;font-size:20px}
+.logo span{color:var(--acc)}
+.sp{flex:1}
+.ibtn{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;height:36px;min-width:36px;
+  padding:0 10px;font-size:14px;cursor:pointer}
+.ibtn.run{color:var(--acc);border-color:var(--acc)}
+.wrap{max-width:780px;margin:0 auto}
+.vistas{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:12px 0 4px}
+.vistas button{border:1px solid var(--line);background:var(--card);color:var(--mute);border-radius:12px;height:42px;
+  font-size:15px;font-weight:700;cursor:pointer}
+.vistas button.on{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+.badge{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--p1);
+  color:#fff;font-size:12px;font-weight:800;margin-left:6px;vertical-align:1px}
+.stats{display:flex;gap:6px;margin:10px 0 8px;overflow-x:auto;scrollbar-width:none}
+.stats::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;border:1px solid transparent;background:var(--chip);color:var(--ink);border-radius:999px;padding:6px 12px;
+  font-size:13px;cursor:pointer;white-space:nowrap}
+.chip b{font-variant-numeric:tabular-nums;margin-left:4px}
+.chip.on{background:var(--accent);color:var(--bg)}
+.chip .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:1px}
+.row2{display:flex;gap:6px;align-items:center}
+.seg{display:flex;background:var(--chip);border-radius:10px;padding:3px;flex:0 0 auto}
+.seg button{border:0;background:transparent;color:var(--mute);padding:6px 9px;border-radius:8px;font-size:13px;cursor:pointer}
+.seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+input,textarea,select{font:inherit;color:var(--ink)}
+input[type=search],input[type=text],input[type=number],input[type=password],textarea{min-width:0;border:1px solid var(--line);
+  background:var(--card);border-radius:10px;padding:8px 10px;font-size:14px;width:100%}
+input[type=search]{height:38px;flex:1}
+main{padding:12px 16px 90px;max-width:780px;margin:0 auto}
+.alerta{background:color-mix(in srgb,var(--p2) 16%,transparent);border:1px solid color-mix(in srgb,var(--p2) 40%,transparent);
+  border-radius:12px;padding:10px 12px;margin-bottom:10px;font-size:13.5px}
+.progreso{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:10px;font-size:13.5px}
+.barra{height:6px;background:var(--line);border-radius:3px;margin-top:6px;overflow:hidden}
+.barra i{display:block;height:100%;background:var(--acc);width:0;transition:width .4s}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px;
+  display:grid;grid-template-columns:52px 1fr;gap:12px;transition:outline-color .6s}
+.card.hl{outline:2px solid var(--acc);outline-offset:2px}
+.card.leida{opacity:.82}
+.score{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:17px;
+  font-variant-numeric:tabular-nums;position:relative;cursor:pointer}
+.score::after{content:"";position:absolute;inset:0;border-radius:50%;
+  background:conic-gradient(var(--c) calc(var(--v)*1%),var(--line) 0);
+  -webkit-mask:radial-gradient(circle,transparent 20px,#000 21px);mask:radial-gradient(circle,transparent 20px,#000 21px)}
+.lvl{font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-weight:700;color:var(--c)}
+.lvl .meta{text-transform:none;letter-spacing:0;font-weight:600;color:var(--mute)}
+.titular{overflow-wrap:break-word;font-weight:800;font-size:17.5px;line-height:1.25;margin:3px 0 2px}
+.sub{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;font-size:13.5px;color:var(--mute);margin-bottom:4px}
+.sub b{color:var(--ink);font-weight:700}
+.km{font-weight:700;color:var(--ink);background:var(--chip);border-radius:6px;padding:1px 7px;font-size:12.5px}
+.tags{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0 4px}
+.tag{font-size:12px;padding:2px 8px;border-radius:6px;background:var(--chip);color:var(--ink)}
+.tag.good{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok)}
+.tag.bad{background:color-mix(in srgb,var(--bad) 14%,transparent);color:var(--bad)}
+.tag.money{background:color-mix(in srgb,var(--acc) 15%,transparent);color:var(--acc);font-weight:700}
+.filtro{font-size:13px;color:var(--mute);border-left:3px solid var(--line);padding-left:8px;margin:6px 0}
+.why{display:none;font-size:12.5px;background:var(--chip);border-radius:10px;padding:8px 10px;margin-top:8px}
+.why.open{display:block}
+.why div{display:flex;justify-content:space-between;gap:10px}
+.why .neg{color:var(--bad)}
+.acts{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.btn{font-size:13px;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:9px;
+  padding:6px 10px;text-decoration:none;cursor:pointer;white-space:nowrap;font-family:inherit}
+.btn.pri{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:700}
+.btn.cv{border-color:var(--acc);color:var(--acc);font-weight:700}
+.btn.on{background:var(--chip);font-weight:700}
+.btn:disabled{opacity:.5}
+.mas{margin-top:10px;border-top:1px dashed var(--line);padding-top:10px;display:none}
+.mas.open{display:block}
+.mas h4{margin:10px 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute)}
+.req{display:grid;grid-template-columns:22px 1fr;gap:2px 6px;font-size:13px;margin-bottom:4px}
+.req small{grid-column:2;color:var(--mute)}
+.desc{white-space:pre-wrap;font-size:13.5px;max-height:260px;overflow:auto;background:var(--chip);border-radius:10px;padding:10px}
+ul.camb{margin:0;padding-left:18px;font-size:13px}
+.vacio{text-align:center;color:var(--mute);padding:40px 10px}
+.cvbox{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.cvbox h3{margin:0 0 4px;font-size:17px}
+.ok{color:var(--ok);font-weight:700}.no{color:var(--bad);font-weight:700}
+.cvprev{font-size:13px;margin-top:8px;color:var(--mute)}
+.cvprev b{color:var(--ink)}
+textarea.json{font:12px/1.4 ui-monospace,Menlo,Consolas,monospace;height:340px;margin-top:8px}
+.hoja{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:20;display:none;align-items:flex-end;justify-content:center}
+.hoja.open{display:flex}
+.hoja .in{background:var(--bg);width:100%;max-width:780px;max-height:92vh;overflow:auto;border-radius:18px 18px 0 0;
+  padding:16px 16px 28px}
+.hoja h2{margin:0 0 8px;font-size:19px}
+.hoja label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}
+.hoja .dos{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hoja .ck{display:flex;gap:14px;flex-wrap:wrap;font-size:14px;color:var(--ink)}
+.hoja .ck label{display:flex;gap:6px;align-items:center;margin:0;color:var(--ink)}
+.pas{font-size:12.5px;color:var(--mute);font-variant-numeric:tabular-nums}
+.bg{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:4px 12px 10px;margin-top:12px}
+.bg h3{margin:10px 0 2px;font-size:15px}
+.bg .nota{font-size:12.5px;color:var(--mute);margin:0 0 6px}
+.bf{display:grid;grid-template-columns:1fr 74px;gap:8px;align-items:center;padding:5px 0;border-top:1px solid var(--line);font-size:14px}
+.bf:first-of-type{border-top:0}
+.bf small{display:block;color:var(--mute);font-size:11.5px}
+.bf input{text-align:right;padding:6px 8px;font-variant-numeric:tabular-nums}
+.bf.cambiado input{border-color:var(--acc);color:var(--acc);font-weight:700}
+.tr{display:grid;grid-template-columns:auto 70px auto 70px 30px;gap:6px;align-items:center;padding:4px 0;font-size:14px}
+.tr input{text-align:right;padding:6px 8px}
+.tr .x{border:0;background:transparent;color:var(--mute);font-size:16px;cursor:pointer}
+.maxi{position:sticky;top:-16px;background:var(--bg);padding:8px 0;z-index:1;font-size:13.5px;border-bottom:1px solid var(--line)}
+.maxi b{font-variant-numeric:tabular-nums}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--accent);color:var(--bg);
+  padding:10px 16px;border-radius:12px;font-size:14px;z-index:30;display:none;max-width:90vw}
+</style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <div class="logo">Job<span>Radar</span></div>
+    <div class="sp"></div>
+    <button class="ibtn" id="bPasada" title="Buscar ahora">⟳ Buscar</button>
+    <button class="ibtn" id="bBaremo" title="Baremo: cómo se puntúan las ofertas">⚖</button>
+    <button class="ibtn" id="bAjustes" title="Ajustes">⚙</button>
+  </div>
+  <div class="wrap">
+    <div class="vistas">
+      <button id="vOfertas" class="on">Ofertas<span class="badge" id="nNuevas" hidden></span></button>
+      <button id="vCv">Mi CV</button>
+    </div>
+    <div id="barraOfertas">
+      <div class="stats" id="chips"></div>
+      <div class="row2">
+        <div class="seg" id="segModo">
+          <button data-m="" class="on">Todas</button><button data-m="remoto">Remoto</button>
+          <button data-m="hibrido">Híbrido</button><button data-m="presencial">Presencial</button>
+        </div>
+        <input type="search" id="q" placeholder="Buscar…">
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div id="avisos"></div>
+  <section id="pOfertas"><div id="lista"></div></section>
+  <section id="pCv" hidden></section>
+</main>
+
+<div class="hoja" id="hAjustes"><div class="in" id="ajustesIn"></div></div>
+<div class="hoja" id="hBaremo"><div class="in" id="baremoIn"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ----------------------------------------------------------------- utilidades
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const md = s => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+let TOKEN = new URLSearchParams(location.search).get("token") || "";
+try { if (TOKEN) localStorage.setItem("jr_token", TOKEN); else TOKEN = localStorage.getItem("jr_token") || ""; } catch (e) {}
+const conTok = u => TOKEN ? u + (u.includes("?") ? "&" : "?") + "token=" + encodeURIComponent(TOKEN) : u;
+const ANDROID = typeof window.Android !== "undefined";
+
+async function api(path, opts = {}) {
+  const h = Object.assign({}, opts.headers || {});
+  if (TOKEN) h["X-Token"] = TOKEN;
+  if (opts.json !== undefined) { h["Content-Type"] = "application/json"; opts.body = JSON.stringify(opts.json); }
+  const r = await fetch(path, {method: opts.method || (opts.body !== undefined ? "POST" : "GET"), headers: h, body: opts.body});
+  let j = {};
+  try { j = await r.json(); } catch (e) {}
+  if (!r.ok || j.ok === false) throw new Error(j.error || j.mensaje || ("HTTP " + r.status));
+  return j;
+}
+function toast(t, ms = 2600) {
+  const el = $("#toast"); el.textContent = t; el.style.display = "block";
+  clearTimeout(toast._t); toast._t = setTimeout(() => el.style.display = "none", ms);
+}
+function hace(iso) {
+  if (!iso) return "";
+  const d = new Date(iso.length <= 10 ? iso + "T12:00:00" : iso);
+  const h = (Date.now() - d) / 36e5;
+  if (h < 24) return iso.length <= 10 ? "hoy" : "hace " + Math.max(1, Math.round(h)) + " h";
+  const dd = Math.round(h / 24);
+  return dd === 1 ? "ayer" : "hace " + dd + " días";
+}
+function abrirPdf(url, nombre) {
+  const u = conTok(url);
+  if (ANDROID && Android.abrirPdf) Android.abrirPdf(location.origin + u, nombre || "cv.pdf");
+  else window.open(u, "_blank");
+}
+function compartirPdf(url, nombre) {
+  if (ANDROID && Android.compartirPdf) Android.compartirPdf(location.origin + conTok(url), nombre || "cv.pdf");
+  else abrirPdf(url + "?descargar=1", nombre);
+}
+function abrirFuera(url) {
+  if (ANDROID && Android.abrirFuera) Android.abrirFuera(url); else window.open(url, "_blank");
+}
+
+// ----------------------------------------------------------------- estado
+const NIV = {prioritaria: ["Prioritaria", "var(--p1)"], interesante: ["Interesante", "var(--p2)"],
+             vigilar: ["A vigilar", "var(--p3)"], baja: ["Baja", "var(--p4)"], filtrada: ["Filtrada", "var(--p4)"]};
+const MOD = {remoto: "🏠 Remoto", "remoto?": "🏠 Remoto (pide oficina)", hibrido: "🔀 Híbrido", presencial: "🏢 Presencial"};
+const S = {vista: "ofertas", filtro: "todas", modo: "", q: "", items: [], abiertas: new Set(), est: null};
+const FILTROS = [
+  ["todas", "Todas", null], ["nuevas", "Nuevas", null, "var(--acc)"], ["prioritaria", "Prioritarias", "prioritaria", "var(--p1)"],
+  ["interesante", "Interesantes", "interesante", "var(--p2)"], ["vigilar", "A vigilar", "vigilar", "var(--p3)"],
+  ["favorita", "⭐ Favoritas"], ["aplicada", "✓ Aplicadas"], ["baja", "Bajas", "baja"], ["filtrada", "Filtradas", "filtrada"],
+  ["descartada", "Descartadas"],
+];
+
+function params() {
+  const p = new URLSearchParams();
+  const f = S.filtro;
+  if (["prioritaria", "interesante", "vigilar", "baja", "filtrada"].includes(f)) p.set("nivel", f);
+  if (f === "filtrada") p.set("filtradas", "1");
+  if (f === "nuevas") p.set("estado", "nueva");
+  if (["favorita", "aplicada", "descartada"].includes(f)) p.set("estado", f);
+  if (f === "todas") p.set("nivel", "prioritaria,interesante,vigilar");
+  if (S.modo) p.set("modalidad", S.modo);
+  if (S.q) p.set("q", S.q);
+  return p.toString();
+}
+
+async function cargar() {
+  try {
+    const [o, e] = await Promise.all([api("/api/ofertas?" + params()), api("/api/estado")]);
+    S.items = o.items; S.est = e;
+    pintarChips(); pintarAvisos(); pintarLista();
+  } catch (err) {
+    $("#lista").innerHTML = `<div class="vacio">No llego al servidor: ${esc(err.message)}</div>`;
+  }
+}
+
+function pintarChips() {
+  const c = S.est.contadores || {};
+  const n = {todas: (c.prioritaria || 0) + (c.interesante || 0) + (c.vigilar || 0), nuevas: c.nuevas,
+             favorita: c.favorita, aplicada: c.aplicada, descartada: c.descartada,
+             prioritaria: c.prioritaria, interesante: c.interesante, vigilar: c.vigilar, baja: c.baja, filtrada: c.filtrada};
+  $("#chips").innerHTML = FILTROS.map(([k, t, , col]) =>
+    `<button class="chip ${S.filtro === k ? "on" : ""}" data-f="${k}">${col ? `<span class="dot" style="background:${col}"></span>` : ""}${t}<b>${n[k] || 0}</b></button>`).join("");
+  const b = $("#nNuevas"); b.hidden = !c.nuevas; b.textContent = c.nuevas || "";
+  const run = S.est.pasada && S.est.pasada.en_curso;
+  $("#bPasada").classList.toggle("run", !!run);
+  $("#bPasada").textContent = run ? "⟳ Buscando…" : "⟳ Buscar";
+}
+
+function pintarAvisos() {
+  const e = S.est, out = [];
+  if (!e.cv.es && !e.cv.en) out.push(`<div class="alerta">📄 Aún no hay CV. Súbelo en <b>Mi CV</b> para que el bot pueda adaptarlo a cada oferta.</div>`);
+  if (!e.gemini) out.push(`<div class="alerta">🤖 Sin API key de Gemini el CV solo se reordena (no se reescribe el perfil ni las viñetas). Ponla en ⚙ Ajustes.</div>`);
+  for (const a of (e.alertas || []).slice(0, 3)) out.push(`<div class="alerta">⚠ ${esc(a.texto)}</div>`);
+  const p = e.pasada;
+  if (p && p.en_curso) {
+    const pct = p.total ? Math.round(100 * p.hechas / p.total) : 0;
+    out.push(`<div class="progreso">${esc(p.fase)}… ${p.hechas}/${p.total}<div class="barra"><i style="width:${pct}%"></i></div></div>`);
+  } else if (e.proxima) {
+    out.push(`<div class="pas" style="margin:0 2px 8px">Próxima búsqueda ${proxTxt(e.proxima)} · ${esc(e.frecuencia || "")}</div>`);
+  }
+  $("#avisos").innerHTML = out.join("");
+}
+
+function proxTxt(ts) {
+  if (!ts) return "—";
+  const d = new Date(ts * 1000), ahora = new Date();
+  if (d - ahora < 60000) return "ahora";
+  const hora = d.toLocaleTimeString("es", {hour: "2-digit", minute: "2-digit"});
+  const man = new Date(ahora); man.setDate(man.getDate() + 1);
+  if (d.toDateString() === ahora.toDateString()) return "hoy a las " + hora;
+  if (d.toDateString() === man.toDateString()) return "mañana a las " + hora;
+  return d.toLocaleDateString("es", {weekday: "long"}) + " a las " + hora;
+}
+
+function sueldoTxt(o) {
+  if (!o.sueldo_max) return "";
+  const a = Math.round(o.sueldo_min / 1000), b = Math.round(o.sueldo_max / 1000);
+  return a === b ? `${b}k €` : `${a}–${b}k €`;
+}
+
+function tarjeta(o) {
+  const [nt, col] = NIV[o.nivel] || ["", "var(--p4)"];
+  const enc = o.encaje || {tiene: [], falta: []};
+  const camb = o.cv_cambios || {};
+  const abierta = S.abiertas.has(o.id);
+  const tags = [];
+  if (o.modalidad) tags.push(`<span class="tag">${MOD[o.modalidad] || esc(o.modalidad)}</span>`);
+  const st = sueldoTxt(o); if (st) tags.push(`<span class="tag money">💶 ${st}</span>`);
+  for (const t of (enc.tiene || []).slice(0, 7)) tags.push(`<span class="tag good">${esc(t)}</span>`);
+  for (const t of (enc.falta || []).slice(0, 5)) tags.push(`<span class="tag bad">✗ ${esc(t)}</span>`);
+  const meta = [o.anios_pedidos ? `${o.anios_pedidos} años` : "", o.candidatos != null ? `${o.candidatos} candidatos` : "", hace(o.fecha_pub)]
+    .filter(Boolean).join(" · ");
+  let cvBtn;
+  if (o.cv_estado === "ok") cvBtn = `<button class="btn cv" data-a="vercv">📄 CV ${esc((o.cv_idioma || "").toUpperCase())}</button>
+      <button class="btn" data-a="compartircv" title="Compartir o guardar el PDF">⤴</button>`;
+  else if (o.cv_estado === "pendiente") cvBtn = `<button class="btn" disabled>⏳ Preparando CV…</button>`;
+  else cvBtn = `<button class="btn" data-a="hacercv">📄 Crear CV</button>`;
+  const why = (o.desglose || []).map(([c, p]) => `<div><span>${esc(c)}</span><b class="${p < 0 ? "neg" : ""}">${p > 0 ? "+" : ""}${p}</b></div>`).join("");
+  const reqs = (camb.requisitos || []).map(r => `<div class="req"><span>${r.cumple === "si" ? "✅" : r.cumple === "parcial" ? "🟡" : "❌"}</span>
+      <span>${esc(r.requisito)}</span>${r.evidencia ? `<small>${esc(r.evidencia)}</small>` : ""}</div>`).join("");
+  const cambios = (camb.cambios || []).map(c => `<li>${esc(c)}</li>`).join("");
+  const rev = (camb.revertidos || []).map(c => `<li>${esc(c)}</li>`).join("");
+  return `<article class="card ${o.estado !== "nueva" ? "leida" : ""}" id="oferta-${o.id}" data-id="${o.id}">
+    <div class="score" style="--c:${col};--v:${o.score}" data-a="why">${o.score}</div>
+    <div>
+      <div class="lvl" style="--c:${col}">${nt}${o.estado !== "nueva" && o.estado !== "vista" ? ` <span class="meta">· ${esc(o.estado)}</span>` : ""}
+        ${meta ? `<span class="meta"> · ${esc(meta)}</span>` : ""}</div>
+      <div class="titular">${esc(o.titulo)}</div>
+      <div class="sub"><b>${esc(o.empresa)}</b><span>${esc(o.lugar)}</span>${o.km != null && o.modalidad !== "remoto" ? `<span class="km">~${o.km} km</span>` : ""}</div>
+      ${o.filtro ? `<div class="filtro">Filtrada: ${esc(o.filtro)}</div>` : ""}
+      <div class="tags">${tags.join("")}</div>
+      <div class="why ${abierta ? "open" : ""}">${why}</div>
+      <div class="acts">
+        <button class="btn pri" data-a="linkedin">Abrir en LinkedIn</button>
+        ${cvBtn}
+        <button class="btn" data-a="mas">${abierta ? "Menos" : "Detalle"}</button>
+        <button class="btn ${o.estado === "favorita" ? "on" : ""}" data-a="favorita" title="Favorita">⭐</button>
+        <button class="btn ${o.estado === "aplicada" ? "on" : ""}" data-a="aplicada" title="Ya me he postulado">✓ Aplicada</button>
+        <button class="btn" data-a="${o.estado === "descartada" ? "restaurar" : "descartar"}" title="Descartar">${o.estado === "descartada" ? "↩" : "✕"}</button>
+      </div>
+      <div class="mas ${abierta ? "open" : ""}">
+        ${reqs ? `<h4>Requisitos de la oferta frente a tu CV</h4>${reqs}` : ""}
+        ${cambios ? `<h4>Qué se ha cambiado en el CV</h4><ul class="camb">${cambios}</ul>` : ""}
+        ${rev ? `<h4>Cambios descartados por la guarda (se dejó tu frase original)</h4><ul class="camb">${rev}</ul>` : ""}
+        ${o.cv_error ? `<h4>Error al crear el CV</h4><div class="filtro">${esc(o.cv_error)}</div>` : ""}
+        ${o.cv_estado === "ok" ? `<div class="acts"><button class="btn" data-a="rehacercv">↻ Rehacer CV</button>
+          <button class="btn" data-a="rehacercv" data-idioma="${o.cv_idioma === "en" ? "es" : "en"}">Rehacer en ${o.cv_idioma === "en" ? "español" : "inglés"}</button></div>` : ""}
+        <h4>Descripción</h4><div class="desc" data-desc>Cargando…</div>
+      </div>
+    </div>
+  </article>`;
+}
+
+function pintarLista() {
+  const L = $("#lista");
+  if (!S.items.length) {
+    const p = (S.est.pasadas || [])[0];
+    L.innerHTML = `<div class="vacio">Nada por aquí.${p ? "" : "<br>Aún no se ha hecho ninguna búsqueda: pulsa ⟳ Buscar."}</div>`;
+    return;
+  }
+  L.innerHTML = S.items.map(tarjeta).join("");
+  for (const id of S.abiertas) cargarDesc(id);
+}
+
+async function cargarDesc(id) {
+  const el = document.querySelector(`#oferta-${id} [data-desc]`);
+  if (!el || el.dataset.ok) return;
+  try { const o = await api("/api/ofertas/" + id); el.textContent = o.descripcion || "(sin descripción)"; el.dataset.ok = 1; }
+  catch (e) { el.textContent = e.message; }
+}
+
+async function accion(id, a, btn) {
+  const o = S.items.find(x => x.id === id);
+  if (!o) return;
+  if (a === "why") { document.querySelector(`#oferta-${id} .why`).classList.toggle("open"); return; }
+  if (a === "mas") {
+    S.abiertas.has(id) ? S.abiertas.delete(id) : S.abiertas.add(id);
+    const card = $("#oferta-" + id);
+    card.querySelector(".mas").classList.toggle("open"); card.querySelector(".why").classList.toggle("open", S.abiertas.has(id));
+    btn.textContent = S.abiertas.has(id) ? "Menos" : "Detalle";
+    cargarDesc(id); marcarVista(o); return;
+  }
+  if (a === "linkedin") { marcarVista(o); abrirFuera(o.url); return; }
+  if (a === "vercv") { marcarVista(o); abrirPdf(`/api/ofertas/${id}/cv.pdf`, o.cv_archivo); return; }
+  if (a === "compartircv") { compartirPdf(`/api/ofertas/${id}/cv.pdf`, o.cv_archivo); return; }
+  if (a === "hacercv" || a === "rehacercv") {
+    btn.disabled = true; btn.textContent = "⏳ Creando…";
+    try {
+      const r = await api(`/api/ofertas/${id}/cv`, {json: {idioma: btn.dataset.idioma || null}});
+      Object.assign(o, r.oferta); toast("CV listo");
+      $("#oferta-" + id).outerHTML = tarjeta(o); cargarDesc(id);
+    } catch (e) { toast(e.message, 5000); btn.disabled = false; btn.textContent = "📄 Crear CV"; }
+    return;
+  }
+  const est = {favorita: o.estado === "favorita" ? "vista" : "favorita", aplicada: o.estado === "aplicada" ? "vista" : "aplicada",
+               descartar: "descartada", restaurar: "vista"}[a];
+  if (!est) return;
+  await api(`/api/ofertas/${id}/estado`, {json: {estado: est}});
+  o.estado = est;
+  if (est === "descartada" && S.filtro !== "descartada") {
+    S.items = S.items.filter(x => x.id !== id); $("#oferta-" + id).remove(); toast("Descartada");
+  } else { $("#oferta-" + id).outerHTML = tarjeta(o); }
+  refrescarEstado();
+}
+
+async function marcarVista(o) {
+  if (o.estado !== "nueva") return;
+  o.estado = "vista";
+  try { await api(`/api/ofertas/${o.id}/estado`, {json: {estado: "vista"}}); } catch (e) {}
+  const c = $("#oferta-" + o.id); if (c) c.classList.add("leida");
+  refrescarEstado();
+}
+
+async function refrescarEstado() {
+  try { S.est = await api("/api/estado"); pintarChips(); pintarAvisos(); } catch (e) {}
+}
+
+// ----------------------------------------------------------------- Mi CV
+let CV = null;
+async function pintarCv() {
+  const P = $("#pCv");
+  try { CV = await api("/api/cv"); } catch (e) { P.innerHTML = `<div class="vacio">${esc(e.message)}</div>`; return; }
+  P.innerHTML = ["es", "en"].map(i => {
+    const c = CV[i], d = c.datos, nombre = i === "es" ? "Español" : "Inglés";
+    const prev = d ? `<div class="cvprev"><b>${esc(d.nombre)}</b> · ${esc(d.titular || "")}<br>
+        ${d.experiencia.length} experiencias (${d.experiencia.reduce((n, e) => n + e.logros.length, 0)} viñetas) ·
+        ${(d.proyectos || []).length} proyectos · ${d.habilidades.length} grupos de habilidades<br>
+        <span>${md(d.perfil || "")}</span></div>` : "";
+    return `<div class="cvbox" data-i="${i}">
+      <h3>CV en ${nombre}</h3>
+      <div class="sub"><span>PDF original: ${c.pdf ? '<span class="ok">✓</span>' : '<span class="no">—</span>'}</span>
+        <span>Listo para adaptar: ${c.json ? '<span class="ok">✓</span>' : '<span class="no">no</span>'}</span>
+        ${c.actualizado ? `<span>actualizado ${new Date(c.actualizado * 1000).toLocaleDateString("es")}</span>` : ""}</div>
+      ${prev}
+      <div class="acts">
+        <label class="btn pri">⬆ Subir PDF<input type="file" accept="application/pdf" hidden data-subir="${i}"></label>
+        ${c.pdf ? `<button class="btn" data-cv="orig">Ver original</button>` : ""}
+        ${c.json ? `<button class="btn" data-cv="vista">Ver cómo lo genera el bot</button><button class="btn" data-cv="editar">Editar</button>` : ""}
+      </div>
+      <div data-editor hidden><textarea class="json"></textarea>
+        <div class="acts"><button class="btn pri" data-cv="guardar">Guardar</button><button class="btn" data-cv="cerrar">Cancelar</button></div>
+        <div class="pas">Las negritas van entre **dobles asteriscos**. No cambies los nombres de los campos.</div></div>
+    </div>`;
+  }).join("") + `<div class="pas" style="padding:0 4px">Las ofertas en inglés usan el CV en inglés; si no lo tienes, va el de español.
+    El bot reordena y reformula, pero no puede añadir tecnologías, cifras ni cargos que no estén en este CV.</div>`;
+}
+
+$("#pCv").addEventListener("change", async ev => {
+  const inp = ev.target.closest("[data-subir]"); if (!inp || !inp.files[0]) return;
+  const i = inp.dataset.subir, f = inp.files[0];
+  toast("Leyendo tu CV…", 20000);
+  try {
+    const r = await api(`/api/cv/${i}/subir`, {method: "POST", body: f, headers: {"Content-Type": "application/pdf"}});
+    toast(r.mensaje, 7000); pintarCv(); refrescarEstado();
+  } catch (e) { toast(e.message, 7000); }
+});
+$("#pCv").addEventListener("click", async ev => {
+  const b = ev.target.closest("[data-cv]"); if (!b) return;
+  const box = b.closest(".cvbox"), i = box.dataset.i, ed = box.querySelector("[data-editor]");
+  const a = b.dataset.cv;
+  if (a === "orig") abrirPdf(`/api/cv/base_${i}.pdf`, `CV_${i}.pdf`);
+  if (a === "vista") abrirPdf(`/api/cv/vista_${i}.pdf`, `CV_base_${i}.pdf`);
+  if (a === "editar") { ed.hidden = false; ed.querySelector("textarea").value = JSON.stringify(CV[i].datos, null, 2); }
+  if (a === "cerrar") ed.hidden = true;
+  if (a === "guardar") {
+    let data;
+    try { data = JSON.parse(ed.querySelector("textarea").value); } catch (e) { toast("JSON no válido: " + e.message, 5000); return; }
+    try { await api(`/api/cv/${i}/json`, {json: data}); toast("CV guardado"); pintarCv(); } catch (e) { toast(e.message, 5000); }
+  }
+});
+
+// ----------------------------------------------------------------- Ajustes
+async function abrirAjustes() {
+  const [a, e] = await Promise.all([api("/api/ajustes"), api("/api/estado")]);
+  const p = a.perfil, lineas = x => (x || []).join("\n");
+  const nv = a.notificar_niveles || [];
+  const f = Object.assign({modo: "horas", cada_horas: 3, desde: "08:00", hasta: "22:00", dias: [0, 1, 2, 3, 4, 5, 6]}, a.frecuencia || {});
+  const pas = (e.pasadas || []).map(x => `<div>${new Date(x.inicio * 1000).toLocaleString("es", {dateStyle: "short", timeStyle: "short"})}
+     · ${x.tarjetas} vistas · ${x.nuevas} nuevas · ${x.cvs || 0} CV${x.error ? ` · <span class="no">${esc(x.error)}</span>` : ""}</div>`).join("") || "Ninguna todavía";
+  $("#ajustesIn").innerHTML = `<h2>Ajustes</h2>
+    <div class="dos">
+      <div><label>Sueldo mínimo (€/año)</label><input type="number" id="aMin" value="${p.sueldo_minimo}"></div>
+      <div><label>Sueldo objetivo (€/año)</label><input type="number" id="aObj" value="${p.sueldo_objetivo}"></div>
+      <div><label>Tus años de experiencia</label><input type="number" id="aAnios" value="${p.anios_experiencia}"></div>
+      <div><label>Híbrido/presencial hasta (km desde ${esc(p.origen)})</label><input type="number" id="aKm" value="${p.zona_max_km}"></div>
+    </div>
+    <div class="bg"><h3>🕑 Cuándo buscar ofertas</h3>
+      <div class="seg" id="fModo" style="display:inline-flex;margin:6px 0 4px">
+        <button data-m="intervalo" class="${f.modo === "intervalo" ? "on" : ""}">Cada X horas</button>
+        <button data-m="horas" class="${f.modo === "horas" ? "on" : ""}">A horas fijas</button></div>
+      <div id="fIntervalo" ${f.modo === "intervalo" ? "" : "hidden"}>
+        <div class="dos">
+          <div><label>Cada (horas, mínimo 1)</label><input type="number" id="fCada" min="1" step="0.5" value="${f.cada_horas}"></div>
+          <div><label>Entre</label><div class="row2"><input type="time" id="fDesde" value="${f.desde}"><span>y</span>
+            <input type="time" id="fHasta" value="${f.hasta}"></div></div>
+        </div>
+      </div>
+      <div id="fHoras" ${f.modo === "horas" ? "" : "hidden"}>
+        <label>Horas (HH:MM, una por línea)</label><textarea id="aHoras" rows="3">${esc(lineas(a.horas_pasada))}</textarea>
+      </div>
+      <label>Días</label>
+      <div class="ck" id="fDias">${["L", "M", "X", "J", "V", "S", "D"].map((d, i) =>
+        `<label><input type="checkbox" data-dia="${i}" ${f.dias.includes(i) ? "checked" : ""}> ${d}</label>`).join("")}</div>
+      <p class="pas" id="fResumen" style="margin:10px 0 0"></p>
+      <p class="pas" style="margin:4px 0 0">Próxima: <b>${proxTxt(e.proxima)}</b>. El móvil mira si hay avisos nuevos cada
+        30 min${ANDROID ? " (se cambia en «Ajustes de la app»)" : ""}; un aviso puede tardar eso en llegar tras la búsqueda.</p>
+    </div>
+    <label>Palabras clave que busca en LinkedIn (una por línea)</label><textarea id="aKw" rows="6">${esc(lineas(a.palabras_clave))}</textarea>
+    <label>Crear CV a partir de (puntos)</label><input type="number" id="aCv" value="${a.cv_desde_score}">
+    <label>Avisar en el móvil de</label>
+    <div class="ck">${["prioritaria", "interesante", "vigilar"].map(n => `<label><input type="checkbox" data-n="${n}" ${nv.includes(n) ? "checked" : ""}> ${NIV[n][0]}</label>`).join("")}</div>
+    <label>No abrir ofertas cuyo título contenga (una por línea)</label><textarea id="aExT" rows="4">${esc(lineas(a.excluir_titulo))}</textarea>
+    <label>Empresas excluidas (una por línea)</label><textarea id="aExE" rows="2">${esc(lineas(a.excluir_empresas))}</textarea>
+    <label>API key de Gemini ${a.gemini_api_key_set ? `<span class="ok">✓ puesta (${esc(a.gemini_api_key_hint)})</span>` : '<span class="no">sin poner</span>'}</label>
+    <div class="row2"><input type="password" id="aKey" placeholder="${a.gemini_api_key_set ? "vacío = no cambiar" : "pega aquí tu API key de Google AI Studio"}">
+      <button class="btn" id="aProbar">Probar</button></div>
+    <label>Modelo de Gemini</label><input type="text" id="aModel" value="${esc(a.gemini_model)}">
+    <div class="acts" style="margin-top:16px"><button class="btn pri" id="aGuardar">Guardar</button>
+      <button class="btn" id="aCerrar">Cerrar</button><button class="btn" id="aBaremo">⚖ Baremo</button>${ANDROID ? `<button class="btn" id="aApp">Ajustes de la app</button>` : ""}</div>
+    <label>Últimas búsquedas</label><div class="pas">${pas}</div>
+    <div class="pas" style="margin-top:10px">JobRadar ${esc(e.version)} · búsquedas ${esc(e.frecuencia || "")}</div>`;
+  $("#hAjustes").classList.add("open");
+  const sp = s => s.split("\n").map(x => x.trim()).filter(Boolean);
+  const leerFrec = () => ({modo: $("#fModo .on").dataset.m, cada_horas: +$("#fCada").value || 0,
+    desde: $("#fDesde").value || "08:00", hasta: $("#fHasta").value || "22:00",
+    dias: [...document.querySelectorAll("[data-dia]")].filter(x => x.checked).map(x => +x.dataset.dia)});
+  const resumenFrec = () => {
+    const fr = leerFrec(), kw = sp($("#aKw").value).length || 1;
+    let n, err = "";
+    if (fr.modo === "horas") n = sp($("#aHoras").value).filter(h => /^\d{1,2}:\d{2}$/.test(h)).length;
+    else {
+      const m = t => +t.split(":")[0] * 60 + +t.split(":")[1], ventana = m(fr.hasta) - m(fr.desde);
+      if (fr.cada_horas < 1) err = "Como mínimo cada 1 h: con menos, LinkedIn bloquea.";
+      else if (ventana <= 0) err = "La franja tiene que empezar antes de terminar.";
+      n = err ? 0 : Math.floor(ventana / (fr.cada_horas * 60)) + 1;
+    }
+    if (!fr.dias.length) err = "Elige al menos un día.";
+    const pet = n * kw * 5;  // palabras × 5 modos, más las ofertas nuevas que abre
+    $("#fResumen").innerHTML = err ? `<span class="no">${err}</span>` :
+      `≈ <b>${n}</b> búsquedas al día${fr.dias.length < 7 ? " los días marcados" : ""} · ~${pet} peticiones a LinkedIn al día
+       (+ una por oferta nueva)${pet > 400 ? ' · <span class="no">muchas: puede que LinkedIn limite</span>' : ""}`;
+  };
+  $("#fModo").onclick = ev => {
+    const b = ev.target.closest("[data-m]"); if (!b) return;
+    $("#fModo").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+    $("#fIntervalo").hidden = b.dataset.m !== "intervalo"; $("#fHoras").hidden = b.dataset.m !== "horas"; resumenFrec();
+  };
+  $("#ajustesIn").oninput = resumenFrec;
+  resumenFrec();
+  $("#aCerrar").onclick = () => $("#hAjustes").classList.remove("open");
+  $("#aBaremo").onclick = () => { $("#hAjustes").classList.remove("open"); abrirBaremo().catch(e => toast(e.message)); };
+  if ($("#aApp")) $("#aApp").onclick = () => Android.openSettings();
+  $("#aProbar").onclick = async () => {
+    try { if ($("#aKey").value.trim()) await guardar(true); const r = await api("/api/gemini/probar", {json: {}}); toast("Gemini responde: " + r.respuesta); }
+    catch (e) { toast(e.message, 6000); }
+  };
+  async function guardar(silencio) {
+    const b = {perfil: {sueldo_minimo: +$("#aMin").value, sueldo_objetivo: +$("#aObj").value,
+               anios_experiencia: +$("#aAnios").value, zona_max_km: +$("#aKm").value},
+               palabras_clave: sp($("#aKw").value), horas_pasada: sp($("#aHoras").value).filter(h => /^\d{1,2}:\d{2}$/.test(h)),
+               frecuencia: leerFrec(),
+               cv_desde_score: +$("#aCv").value, excluir_titulo: sp($("#aExT").value), excluir_empresas: sp($("#aExE").value),
+               notificar_niveles: [...document.querySelectorAll("[data-n]")].filter(x => x.checked).map(x => x.dataset.n),
+               gemini_model: $("#aModel").value.trim() || "gemini-3.8-flash", gemini_api_key: $("#aKey").value.trim()};
+    const r = await api("/api/ajustes", {json: b});
+    if (!silencio) {
+      toast(`Guardado. Búsquedas ${r.frecuencia}; la próxima ${proxTxt(r.proxima)}.`, 5000);
+      $("#hAjustes").classList.remove("open"); cargar();
+    }
+  }
+  $("#aGuardar").onclick = () => guardar(false).catch(e => toast(e.message, 5000));
+}
+$("#hAjustes").addEventListener("click", e => { if (e.target.id === "hAjustes") e.currentTarget.classList.remove("open"); });
+
+
+// ----------------------------------------------------------------- Baremo
+const ETQ = {
+  remoto: ["Remoto (toda España)"],
+  remoto_con_oficina: ["«Remoto» que pide ir a la oficina", "se suma a los puntos de remoto"],
+  "rol.backend": ["Backend"], "rol.java": ["Desarrollo Java"], "rol.analista_programador": ["Analista programador"],
+  "rol.analista_funcional": ["Analista", "funcional, de negocio, de sistemas…"], "rol.fullstack": ["Full stack"],
+  "rol.desarrollador": ["Desarrollo genérico", "developer, ingeniero de software… sin decir lenguaje"],
+  "rol.lider": ["Tech lead / arquitectura"], "rol.data": ["Datos", "data engineer, ETL…"], "rol.otro": ["Otro"],
+  stack_max: ["Máximo del bloque", "aunque sume más, no pasa de aquí"],
+  lenguaje_ajeno: ["Lenguaje principal distinto", ".NET, PHP, Node, Go… sin Java ni Python"],
+  "experiencia.encaja": ["Encaja con tus años"], "experiencia.margen_encaja": ["…hasta tus años +", "años de más que aún cuentan como «encaja»"],
+  "experiencia.algo_mas": ["Piden algo más"], "experiencia.margen_algo_mas": ["…hasta tus años +", "por encima de esto, «mucho más»"],
+  "experiencia.mucho_mas": ["Piden mucho más"], "experiencia.junior": ["Puesto junior"], "experiencia.sin_dato": ["No dicen años"],
+  "sueldo.objetivo": ["Sueldo ≥ tu objetivo"], "sueldo.minimo": ["Sueldo ≥ tu mínimo"], "sueldo.sin_publicar": ["Sin publicar"],
+  "sueldo.por_debajo": ["Por debajo de tu mínimo"],
+  fresca_24h: ["Publicada hace menos de 24 h"], pocos_candidatos: ["Menos de 25 candidatos"],
+  muchos_candidatos: ["Más de 200 candidatos"], temporal: ["Contrato temporal"],
+};
+const GRUPOS = [
+  ["Modalidad y distancia", "Las híbridas y presenciales más allá del último tramo (o de tu radio en Ajustes) se filtran.",
+   ["remoto", "#tramos:hibrido:Híbrido", "#tramos:presencial:Presencial", "remoto_con_oficina"]],
+  ["Tipo de puesto", "Según el título de la oferta.", ["rol.*"]],
+  ["Encaje del stack", "Suma lo de cada tecnología de tu CV que aparezca en la oferta.", ["stack_max", "stack.*", "lenguaje_ajeno"]],
+  ["Experiencia que piden", "", ["experiencia.*"]],
+  ["Sueldo", "El mínimo y el objetivo se ponen en ⚙ Ajustes.", ["sueldo.*"]],
+  ["Frescura y otros", "", ["fresca_24h", "pocos_candidatos", "muchos_candidatos", "temporal"]],
+];
+let BR = null;
+const get = (o, path) => path.split(".").reduce((a, k) => a == null ? a : a[k], o);
+
+function campo(path, label, nota, v, d) {
+  return `<div class="bf ${v !== d ? "cambiado" : ""}"><div>${esc(label)}${nota ? `<small>${esc(nota)}</small>` : ""}
+    ${v !== d ? `<small>de serie: ${d}</small>` : ""}</div>
+    <input type="number" inputmode="numeric" data-p="${path}" data-d="${d}" value="${v}"></div>`;
+}
+function tramos(clave, nombre) {
+  const filas = BR.pesos[clave].map(([km, p]) => `<div class="tr" data-tr="${clave}"><span>hasta</span>
+    <input type="number" data-km value="${km}"><span>km →</span><input type="number" data-pt value="${p}">
+    <button class="x" data-quitar title="Quitar tramo">✕</button></div>`).join("");
+  return `<div class="bf" style="grid-template-columns:1fr"><div>${nombre}<small>de serie: ${BR.defecto[clave].map(t => `≤${t[0]} km ${t[1]}`).join(" · ")}</small>
+    ${filas}<button class="btn" data-anadir="${clave}" style="margin-top:4px">＋ tramo</button></div></div>`;
+}
+function pintarBaremo() {
+  const P = BR.pesos, D = BR.defecto, N = BR.niveles;
+  let h = `<h2>⚖ Baremo</h2><div class="maxi">Máximo posible: <b id="bMax">${BR.maximo}</b> puntos ·
+    niveles <b id="bNiv">${N.prioritaria} / ${N.interesante} / ${N.vigilar}</b>
+    <span id="bAviso" class="no"></span></div>`;
+  for (const [tit, nota, claves] of GRUPOS) {
+    h += `<div class="bg"><h3>${tit}</h3>${nota ? `<p class="nota">${esc(nota)}</p>` : ""}`;
+    for (const c of claves) {
+      if (c.startsWith("#tramos:")) { const [, k, n] = c.split(":"); h += tramos(k, n); continue; }
+      const paths = c.endsWith(".*") ? Object.keys(P[c.slice(0, -2)]).map(k => c.slice(0, -1) + k) : [c];
+      for (const p of paths) {
+        const [lab, nt] = ETQ[p] || [p.split(".").pop(), ""];
+        h += campo(p, lab, nt, get(P, p), get(D, p));
+      }
+    }
+    h += `</div>`;
+  }
+  h += `<div class="bg"><h3>Niveles</h3><p class="nota">Puntos a partir de los que una oferta es de cada nivel (y suena, avisa o no).</p>
+    ${campo("niveles.prioritaria", "🔴 Prioritaria desde", "", N.prioritaria, BR.niveles_defecto.prioritaria)}
+    ${campo("niveles.interesante", "🟠 Interesante desde", "", N.interesante, BR.niveles_defecto.interesante)}
+    ${campo("niveles.vigilar", "🔵 A vigilar desde", "por debajo: baja, solo en la lista", N.vigilar, BR.niveles_defecto.vigilar)}</div>
+  <div class="acts" style="margin-top:16px"><button class="btn pri" id="bGuardar">Guardar y recalcular ofertas</button>
+    <button class="btn" id="bCerrar">Cerrar</button>${BR.personalizado ? `<button class="btn" id="bReset">Volver al de serie</button>` : ""}</div>
+  <div class="pas" style="margin-top:8px">Al guardar se vuelven a puntuar todas las ofertas guardadas con estos números.
+    Las que ya tenían CV lo conservan; si alguna sube por encima del umbral, crea su CV con «📄 Crear CV».</div>`;
+  $("#baremoIn").innerHTML = h;
+  revisar();
+}
+function leerBaremo() {
+  const P = JSON.parse(JSON.stringify(BR.pesos)), N = {};
+  document.querySelectorAll("#baremoIn [data-p]").forEach(i => {
+    const v = +i.value, ks = i.dataset.p.split(".");
+    if (ks[0] === "niveles") { N[ks[1]] = v; return; }
+    if (ks.length === 1) P[ks[0]] = v; else P[ks[0]][ks[1]] = v;
+  });
+  for (const k of ["hibrido", "presencial"]) {
+    P[k] = [...document.querySelectorAll(`#baremoIn [data-tr="${k}"]`)].map(f => [+f.querySelector("[data-km]").value, +f.querySelector("[data-pt]").value]);
+  }
+  return {P, N};
+}
+function maximoJs(P) {
+  const pos = x => Math.max(0, x);
+  const modos = [P.remoto, ...P.hibrido.map(t => t[1]), ...P.presencial.map(t => t[1])];
+  const exp = Object.entries(P.experiencia).filter(([k]) => !k.startsWith("margen")).map(([, v]) => v);
+  return Math.max(...modos) + Math.max(...Object.values(P.rol)) +
+    Math.min(P.stack_max, Object.values(P.stack).reduce((a, b) => a + pos(b), 0)) + pos(Math.max(...exp)) +
+    pos(Math.max(...Object.values(P.sueldo))) + pos(P.fresca_24h) + pos(P.pocos_candidatos);
+}
+function revisar() {
+  const {P, N} = leerBaremo(), m = maximoJs(P);
+  $("#bMax").textContent = m;
+  $("#bNiv").textContent = `${N.prioritaria} / ${N.interesante} / ${N.vigilar}`;
+  let av = "";
+  if (!(N.prioritaria > N.interesante && N.interesante > N.vigilar)) av = " · los niveles tienen que ir de mayor a menor";
+  else if (m < N.prioritaria) av = ` · ninguna oferta podrá ser prioritaria (máx. ${m} < ${N.prioritaria})`;
+  const ultimo = Math.max(...P.hibrido.map(t => t[0]), ...P.presencial.map(t => t[0]));
+  if (!av && ultimo < BR.zona_max_km) av = ` · el último tramo (${ultimo} km) es menor que tu radio (${BR.zona_max_km} km): lo de en medio se filtra`;
+  $("#bAviso").textContent = av;
+  document.querySelectorAll("#baremoIn [data-p]").forEach(i => i.closest(".bf").classList.toggle("cambiado", +i.value !== +i.dataset.d));
+}
+async function abrirBaremo() {
+  BR = await api("/api/baremo");
+  pintarBaremo();
+  $("#hBaremo").classList.add("open");
+}
+$("#baremoIn").addEventListener("input", revisar);
+$("#baremoIn").addEventListener("click", async e => {
+  const t = e.target;
+  if (t.id === "bCerrar") { $("#hBaremo").classList.remove("open"); return; }
+  if (t.dataset.quitar !== undefined) {
+    const k = t.closest("[data-tr]").dataset.tr;
+    if (document.querySelectorAll(`#baremoIn [data-tr="${k}"]`).length > 1) { t.closest("[data-tr]").remove(); revisar(); }
+    return;
+  }
+  if (t.dataset.anadir) {
+    const {P} = leerBaremo(); BR.pesos = Object.assign(BR.pesos, P);
+    const k = t.dataset.anadir, ult = BR.pesos[k][BR.pesos[k].length - 1] || [0, 0];
+    BR.pesos[k].push([ult[0] + 20, Math.max(0, ult[1] - 5)]);
+    const {N} = leerBaremo(); BR.niveles = Object.assign(BR.niveles, N);
+    pintarBaremo(); return;
+  }
+  if (t.id === "bGuardar" || t.id === "bReset") {
+    t.disabled = true; t.textContent = "Recalculando…";
+    try {
+      const {P, N} = leerBaremo();
+      const r = await api("/api/baremo", {json: t.id === "bReset" ? {restablecer: true} : {pesos: P, niveles: N}});
+      BR = r.baremo; pintarBaremo();
+      const rc = r.recalculo || {};
+      toast(`Guardado. ${rc.revisadas || 0} ofertas repuntuadas, ${rc.cambian_nivel || 0} cambian de nivel.`, 5000);
+      $("#hBaremo").classList.remove("open");
+      cargar();
+    } catch (err) { toast(err.message, 6000); t.disabled = false; t.textContent = "Guardar y recalcular ofertas"; }
+  }
+});
+$("#hBaremo").addEventListener("click", e => { if (e.target.id === "hBaremo") e.currentTarget.classList.remove("open"); });
+$("#bBaremo").onclick = () => abrirBaremo().catch(e => toast(e.message));
+
+// ----------------------------------------------------------------- eventos
+$("#chips").addEventListener("click", e => { const b = e.target.closest("[data-f]"); if (!b) return; S.filtro = b.dataset.f; cargar(); });
+$("#segModo").addEventListener("click", e => {
+  const b = e.target.closest("[data-m]"); if (!b) return;
+  S.modo = b.dataset.m; document.querySelectorAll("#segModo button").forEach(x => x.classList.toggle("on", x === b)); cargar();
+});
+let tq; $("#q").addEventListener("input", e => { clearTimeout(tq); tq = setTimeout(() => { S.q = e.target.value.trim(); cargar(); }, 300); });
+$("#lista").addEventListener("click", e => {
+  const b = e.target.closest("[data-a]"); if (!b) return;
+  accion(+b.closest(".card").dataset.id, b.dataset.a, b);
+});
+function vista(v) {
+  S.vista = v;
+  $("#vOfertas").classList.toggle("on", v === "ofertas"); $("#vCv").classList.toggle("on", v === "cv");
+  $("#pOfertas").hidden = v !== "ofertas"; $("#pCv").hidden = v !== "cv"; $("#barraOfertas").hidden = v !== "ofertas";
+  if (v === "cv") pintarCv();
+}
+$("#vOfertas").onclick = () => vista("ofertas");
+$("#vCv").onclick = () => vista("cv");
+$("#bAjustes").onclick = () => abrirAjustes().catch(e => toast(e.message));
+$("#bPasada").onclick = async () => {
+  try { const r = await api("/api/pasada", {json: {}}); toast(r.mensaje); } catch (e) { toast(e.message); }
+  refrescarEstado(); vigilarPasada();
+};
+function vigilarPasada() {
+  clearInterval(vigilarPasada._t);
+  vigilarPasada._t = setInterval(async () => {
+    await refrescarEstado();
+    if (!S.est.pasada.en_curso) { clearInterval(vigilarPasada._t); cargar(); }
+  }, 4000);
+}
+
+// enlace desde una notificación: #oferta-123 → la abre y la resalta
+async function irAncla() {
+  const m = location.hash.match(/^#oferta-(\d+)/);
+  if (!m) return;
+  const id = +m[1];
+  if (!S.items.some(o => o.id === id)) {
+    try { const o = await api("/api/ofertas/" + id); S.items.unshift(o); pintarLista(); } catch (e) { return; }
+  }
+  S.abiertas.add(id);
+  const c = $("#oferta-" + id);
+  if (!c) return;
+  c.outerHTML = tarjeta(S.items.find(o => o.id === id));
+  const n = $("#oferta-" + id);
+  n.scrollIntoView({behavior: "smooth", block: "start"}); n.classList.add("hl"); cargarDesc(id);
+  setTimeout(() => n.classList.remove("hl"), 2500);
+  marcarVista(S.items.find(o => o.id === id));
+}
+window.addEventListener("hashchange", irAncla);
+if (location.hash === "#cv") vista("cv");
+cargar().then(() => { irAncla(); if (S.est && S.est.pasada && S.est.pasada.en_curso) vigilarPasada(); });
+</script>
+</body>
+</html>

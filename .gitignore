@@ -1,0 +1,13 @@
+# datos de la Pi: tu CV, ofertas, ajustes con la API key
+server/data/
+server/config.json
+__pycache__/
+*.pyc
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+
+# Clave de firma de la APK: va en GitHub Secrets, nunca en el repo
+*.jks
+*.keystore

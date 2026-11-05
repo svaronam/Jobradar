@@ -1,0 +1,175 @@
+# JobRadar
+
+Busca en LinkedIn ofertas de **backend Java/Spring, analista programador y analista**, las puntúa de 0 a 100 según tus prioridades, te prepara **un CV adaptado a cada oferta** y te avisa en el móvil por Tailscale. De momento no se postula: tú abres la oferta, miras el CV y decides.
+
+```
+jobradar/
+├── server/        → Python para la Raspberry (solo paquetes de apt, sin pip)
+│   └── data/      → tu CV, las ofertas y los ajustes (no va al repo)
+├── android/       → APK (se compila sola en GitHub Actions)
+└── .github/workflows/apk.yml
+```
+
+## Qué busca y dónde
+
+| Modo | Dónde | Cómo |
+|---|---|---|
+| Remoto | Toda España | filtro «En remoto» de LinkedIn |
+| Híbrido y presencial | Cantabria y Bilbao + 40 km | filtros «Híbrido» y «Presencial» |
+
+Cada pasada cruza las **7 palabras clave** (`java spring`, `desarrollador backend java`, `backend developer java`, `spring boot`, `analista programador`, `analista funcional`, `python backend`) con esos 5 modos.
+
+**Cuándo busca** se elige en ⚙ Ajustes → 🕑 Cuándo buscar ofertas:
+- **A horas fijas**: de serie a las 08:40, 13:40 y 19:40.
+- **Cada X horas** dentro de una franja, por ejemplo cada 3 h de 08:00 a 22:00. El mínimo es 1 h, porque con menos LinkedIn empieza a bloquear.
+- En los dos modos puedes elegir los días, por ejemplo solo de lunes a viernes.
+
+El cambio se aplica al momento, sin reiniciar. La app te enseña cuántas búsquedas y peticiones a LinkedIn salen al día, y la hora de la próxima búsqueda.
+
+Si la Pi estuvo apagada, recupera la búsqueda perdida al encenderse. Cada búsqueda mira las ofertas publicadas desde la anterior: como mínimo las de las últimas 24 h y como máximo las de la última semana.
+
+Aparte, el móvil pregunta a la Pi si hay avisos nuevos cada 30 min. Eso se cambia en *Ajustes de la app* (mínimo 15 min, por límite de Android).
+
+Solo se abre el detalle de las ofertas **nuevas**, y antes se descartan por título (frontend, QA, .NET, PHP, prácticas…). La lista de exclusiones se edita en ⚙ Ajustes.
+
+Lee la **búsqueda pública de LinkedIn, sin iniciar sesión**: no usa tu cuenta, así que no te la pueden restringir. Va despacio, con 3-7 s entre peticiones. Si LinkedIn empieza a limitar, la pasada se corta sola y te llega un aviso «⚠ Estado del radar».
+
+## El baremo
+
+| Criterio | Puntos |
+|---|---|
+| **Modalidad y distancia a Limpias** | remoto 30 · híbrido 25 / 22 / 18 / 12 (≤ 20, 40, 60, 80 km) · presencial 18 / 14 / 10 / 5 |
+| **Puesto** | backend, desarrollo Java o analista programador 20 · analista funcional 15 · desarrollo genérico 14 · full stack o liderazgo 12 · datos 8 · otro 4 |
+| **Stack** (máx. 25) | Java 6 · Spring Boot 5 · Spring Batch 4 · SQL, microservicios y Python 3 · JPA, REST, JUnit, AWS, DDD y análisis funcional 2… |
+| **Experiencia pedida** | hasta 6 años 10 · 7-8 años 5 · más de 8 años 0 · junior 3 · sin indicar 6 |
+| **Sueldo** | ≥ objetivo (45k) 10 · ≥ mínimo (35k) 7 · sin publicar 3 · **por debajo del mínimo −15** |
+| **Frescura** | menos de 24 h +3 · menos de 25 candidatos +2 · más de 200 −2 |
+| **Penalizaciones** | lenguaje principal distinto (.NET, PHP, Node…) −15 · contrato temporal −5 · «remoto» que pide ir a la oficina −25 |
+
+Niveles: **🔴 Prioritaria ≥ 75** (suena) · **🟠 Interesante ≥ 58** · **🔵 A vigilar ≥ 40** (sin sonido) · **Baja < 40** (solo en la lista).
+
+Estas ofertas quedan **filtradas**: se guardan, pero no se avisa de ellas.
+- Híbridas o presenciales a más de 80 km.
+- Ofertas «remotas» que piden ir a una oficina lejos.
+- Empresas excluidas y prácticas.
+
+En la app, toca el número de cualquier oferta para ver de dónde sale cada punto.
+
+### Cambiar el baremo desde la app
+
+Pulsa **⚖** (arriba, o en ⚙ → ⚖ Baremo). Ahí puedes cambiar todos los números de la tabla:
+- los puntos de remoto y los **tramos de km** de híbrido y presencial (puedes añadir o quitar tramos),
+- cada tipo de puesto,
+- **cada tecnología** del stack y el máximo del bloque,
+- experiencia, sueldo, frescura y penalizaciones,
+- y los **umbrales de cada nivel**.
+
+Lo que difiere del baremo de serie sale resaltado, con el valor de serie debajo. Arriba se ve en vivo el **máximo posible**. También avisa si un nivel queda inalcanzable, si los niveles no van de mayor a menor o si el último tramo de km es menor que tu radio.
+
+**Guardar y recalcular** vuelve a puntuar todas las ofertas guardadas con los números nuevos y te dice cuántas cambian de nivel. Lo mismo pasa al cambiar sueldo, km o exclusiones en ⚙ Ajustes. **Volver al de serie** lo deja todo como venía.
+
+Se guarda en `server/data/ajustes.json`. `config.json → pesos` sigue funcionando para quien prefiera editarlo a mano.
+
+## El CV adaptado
+
+Para cada oferta con **55 puntos o más** se genera un PDF de una página con el mismo estilo que tu CV. Va en el idioma de la oferta: tienes cargados el CV en español y en inglés.
+
+**Qué cambia Gemini:**
+- Reescribe el extracto del perfil y la línea bajo tu nombre, orientados al puesto.
+- Reordena las viñetas de cada experiencia y puede reformularlas para poner delante lo que pide la oferta.
+- Reordena las habilidades y las secciones.
+- Marca en negrita las palabras clave de la oferta.
+
+**Qué no puede hacer.** Lo comprueba una guarda en Python después de Gemini:
+- No puede nombrar tecnologías que no estén en tu CV. Si la oferta pide Kafka y no lo tienes, no aparece en el CV: sale en la ficha como ❌ requisito no cumplido.
+- No puede añadir cifras.
+- No puede atribuirte cargos o liderazgo.
+- No puede quitar viñetas ni habilidades.
+- No puede tocar empresas, fechas, puestos ni formación.
+
+Si una frase incumple algo de esto, se queda la tuya original. En la ficha («Detalle») ves:
+- los requisitos de la oferta frente a tu CV (✅ 🟡 ❌),
+- qué se ha cambiado,
+- qué cambios descartó la guarda.
+
+**Sin API key de Gemini** también funciona, pero solo reordena viñetas y habilidades según las palabras de la oferta.
+
+**Mi CV:** ahí están tu CV en español y en inglés.
+- Puedes **subir un PDF nuevo**: Gemini lo convierte en el formato que usa el bot.
+- **Ver cómo lo genera el bot** muestra tu CV pintado por el generador.
+- **Editar** abre el JSON por si algo no se leyó bien.
+
+---
+
+## 1 · Servidor en homelab1
+
+Usa el puerto **8796**, que no choca con Wallapop (8787), Wallabot (8788) ni pi-agent (8790).
+
+```bash
+# en el PC: sube la carpeta server (incluye data/ con tu CV ya cargado)
+scp -r jobradar/server sergio@homelab1:~/jobradar
+
+# en la Pi
+ssh sergio@homelab1
+cd ~/jobradar
+bash install.sh            # paquetes de apt + servicio systemd + lo enlaza en Pi Monitor
+python3 run.py probar      # ¿lee LinkedIn? enseña ofertas y cómo las puntuaría, sin guardar
+```
+
+**Haz `probar` antes de nada.** El lector está escrito con el formato de la búsqueda pública de LinkedIn, pero no lo he podido probar contra la web real.
+- Si sale `0 ofertas` en todos los modos, pásame `data/debug/lista_vacia.html` y lo ajusto.
+- Si las descripciones salen vacías, pásame `data/debug/detalle_*.html`.
+
+En cuanto arranca el servicio hace la primera pasada, con las ofertas de la última semana. Esas no generan avisos, para no llenarte el móvil, pero sí CV.
+
+Desde el móvil, con Tailscale activo: `http://homelab1:8796`
+
+```bash
+journalctl -u jobradar -f           # log en vivo
+python3 run.py pasada               # pasada manual (también con el botón ⟳ Buscar)
+python3 run.py demo                 # 5 ofertas de ejemplo para ver la app
+python3 -m unittest discover tests  # tests
+```
+
+## 2 · API key de Gemini
+
+Puedes usar la misma que en OpoTest (Google AI Studio). Ponla en la app: **⚙ → API key de Gemini → Probar → Guardar**. Se guarda en `server/data/ajustes.json` con permisos 600.
+
+Con el nivel gratuito sobra para unas decenas de CV al día. Entre CV hay 4 s de pausa para no pasar del límite por minuto.
+
+## 3 · APK
+
+1. Crea el repo `github.com/svaronam/jobradar` y sube **toda** la carpeta `jobradar/`, incluida `.github/`. `server/data/` está en `.gitignore`, así que tu CV y tus datos no se suben.
+2. Crea la clave de firma y añádela como secretos del repo (*Settings → Secrets and variables → Actions*):
+   ```bash
+   keytool -genkeypair -v -keystore jobradar.jks -alias jobradar -keyalg RSA -keysize 2048 -validity 10000
+   base64 -w0 jobradar.jks     # → secreto KEYSTORE_BASE64
+   ```
+   El secreto `KEYSTORE_PASSWORD` es la contraseña que hayas puesto. Guarda el `.jks` fuera del repo.
+3. Actions compila la APK en cada push que toque `android/`. Descárgala desde **Releases → «ultima» → JobRadar.apk**.
+4. Abre la app → servidor `http://homelab1:8796` → **Guardar** (comprueba la conexión) → **Probar aviso**.
+5. Ajustes del móvil → Apps → JobRadar → Batería → **Sin restricciones**.
+
+**Cómo llegan los avisos:**
+- Cada 30 min (mínimo 15) la app pregunta a la Pi si hay ofertas nuevas.
+- Una oferta no se avisa hasta que su CV está listo, así que la notificación ya lo trae.
+- La notificación tiene dos botones: **Abrir en LinkedIn** y **Ver CV**.
+- Si llegan más de 5 de golpe, recibes un resumen y las 4 mejores.
+
+**En la app:**
+- **📄 CV** abre el PDF.
+- **⤴** lo comparte (correo, Drive, la app de LinkedIn para adjuntarlo…).
+- **✓ Aplicada**, **⭐** y **✕** te sirven para llevar la cuenta.
+
+## Ajustes útiles
+
+- Desde la app (⚙):
+  - Sueldo mínimo y objetivo, años de experiencia y km máximos.
+  - Palabras clave, horas de pasada y umbral de CV.
+  - Qué niveles notificar, títulos y empresas excluidos, y API key.
+- Desde `server/config.json`:
+  - `modos`: las zonas de búsqueda.
+  - `token`: para proteger la web/API.
+  - `pesos`: el baremo.
+
+  Tras cambiarlo: `sudo systemctl restart jobradar`.

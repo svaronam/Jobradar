@@ -1,0 +1,55 @@
+name: APK JobRadar
+
+on:
+  push:
+    branches: [main]
+    paths: ["android/**", ".github/workflows/apk.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preparar la clave de firma (GitHub Secrets)
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then echo "::error::Falta el secreto KEYSTORE_BASE64. Ver INSTALACION.md"; exit 1; fi
+          mkdir -p "$(dirname "$GITHUB_WORKSPACE/android/app/keystore/jobradar.jks")"
+          echo "$KEYSTORE_BASE64" | base64 -d > "$GITHUB_WORKSPACE/android/app/keystore/jobradar.jks"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Compilar APK
+        working-directory: android
+        run: gradle assembleRelease --no-daemon --stacktrace
+
+      - name: Renombrar
+        run: cp android/app/build/outputs/apk/release/app-release.apk JobRadar.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: JobRadar-apk
+          path: JobRadar.apk
+
+      # Release "ultima" para descargar la APK directamente desde el móvil
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ultima
+          name: JobRadar (última compilación)
+          prerelease: false
+          make_latest: true
+          files: JobRadar.apk
