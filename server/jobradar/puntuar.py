@@ -72,7 +72,7 @@ AJENAS = [
 ]
 PESOS["stack"] = {nombre: pts for nombre, _, pts in STACK}
 
-ETIQ = {"hibrido": "Híbrido", "presencial": "Presencial", "remoto": "Remoto"}
+ETIQ = {"hibrido": "Híbrido", "presencial": "Presencial", "remoto": "Remoto", "zona": "En tu zona"}
 LENGUAJE_AJENO = r"\.net\b|\bc#|\bphp\b|node\.?js|\bgolang\b|\bruby\b|\bscala\b|\bsalesforce\b|\babap\b"
 
 
@@ -103,15 +103,32 @@ def rol_de(titulo):
     return "otro", "Otro"
 
 
-def modalidad_real(modo, desc):
-    """El listado dice remoto/híbrido/presencial por el filtro; la descripción a veces lo contradice."""
-    d = norm(desc)
+RX_REMOTO = r"\b(100\s*%\s*)?(remoto|remote|teletrabajo|full[- ]?remote|en remoto|trabajo a distancia)\b"
+RX_HIBRIDO = r"\b(hibrid[oa]|hybrid)\b"
+RX_PRESENCIAL = r"\b(presencial|on[- ]?site|in[- ]office)\b"
+RX_OFICINA = (r"\d\s*(dias?|days?)\b[^.\n]{0,45}(oficina|office|presencial|on-?site|instalaciones)"
+              r"|(modelo|formato|modalidad|regimen)\s*(de trabajo\s*)?hibrid|hybrid\s*(model|work|role|position)"
+              r"|presencialidad|(acudir|ir|venir|desplazarte) a (la|nuestra|nuestras) oficina")
+
+
+def modalidad_real(modo, desc, titulo=""):
+    """La búsqueda da una pista (remoto / zona), pero manda lo que dicen el título y la descripción.
+    remoto · remoto? (dice remoto y pide ir a la oficina) · hibrido · presencial"""
+    t, d = norm(titulo), norm(desc)
+    if re.search(RX_HIBRIDO, t):
+        return "remoto?" if modo == "remoto" else "hibrido"
+    if re.search(RX_REMOTO, t) and not re.search(RX_PRESENCIAL, t):
+        return "remoto?" if re.search(RX_OFICINA, d) else "remoto"
     if modo == "remoto":
-        if re.search(r"\d\s*(dias?|days?)\b[^.\n]{0,45}(oficina|office|presencial|on-?site|instalaciones)", d) \
-                or re.search(r"(modelo|formato|modalidad|regimen)\s*(de trabajo\s*)?hibrid|hybrid\s*(model|work|role|position)"
-                             r"|presencialidad|(acudir|ir|venir|desplazarte) a (la|nuestra|nuestras) oficina", d):
-            return "remoto?"
-    return modo
+        return "remoto?" if re.search(RX_OFICINA, d) else "remoto"
+    # oferta de tu zona: lo que diga la descripción
+    if re.search(r"100\s*%\s*(remoto|remote|teletrabajo)|full[- ]?remote|totalmente en remoto|teletrabajo total", d):
+        return "remoto"
+    if re.search(RX_HIBRIDO, d) or re.search(RX_OFICINA, d):
+        return "hibrido"
+    if modo in ("hibrido", "presencial"):  # modos de config antiguos
+        return modo
+    return "presencial"  # si no dice nada, lo prudente
 
 
 def sueldo(txt):
@@ -219,7 +236,7 @@ def puntuar(o, cfg, ahora=None):
         filtro = filtro or "Prácticas"
 
     # --- modalidad y distancia
-    modo = modalidad_real(o.get("modo", ""), desc)
+    modo = modalidad_real(o.get("modo", ""), desc, titulo)
     km = geo.km_desde(per.get("origen", "Limpias"), o.get("lugar", ""))
     if modo == "remoto":
         des.append(["Remoto (toda España)", P["remoto"]])
@@ -321,11 +338,19 @@ def puntuar(o, cfg, ahora=None):
             "anios_pedidos": pide, "encaje": {"tiene": tiene, "falta": falta}, "idioma": idioma(desc or titulo)}
 
 
+RX_SECTOR = (r"informati|software|sistemas|\bit\b|\bti\b|\btic\b|tecnolog|technolog|\bdatos\b|\bdata\b|cloud|devops|"
+             r"\bjava\b|python|\bsql\b|\bweb\b|\bapps?\b|digital|ingenier|engineer|developer|desarroll|programad|"
+             r"analist|analyst|arquitect|architect|consultor|consultant|tecnic|technical|\bqa\b|backend|back-end|fullstack")
+
+
 def prefiltro(titulo, cfg):
     """Antes de abrir el detalle: descarta por título para no pedir de más a LinkedIn."""
     for ex in cfg.get("excluir_titulo") or []:
         if contiene(ex, titulo):
             return f"Título excluido («{ex.strip()}»)"
+    # cuando hay pocas coincidencias, LinkedIn rellena con cualquier cosa (conductores, prensa...)
+    if not re.search(RX_SECTOR, norm(titulo)):
+        return "No es un puesto de informática"
     return ""
 
 
@@ -335,7 +360,10 @@ def recalcular(db, cfg):
     for o in db.para_recalcular():
         if o["nivel"] == "filtrada" and not o.get("descripcion"):
             continue  # descartada por título o duplicada: no hay datos para puntuarla
-        modo = "remoto" if (o.get("modalidad") or "").startswith("remoto") else o.get("modalidad")
+        # la pista es el modo de la búsqueda que la encontró ("java spring · zona · Cantabria, España")
+        partes = (o.get("busqueda") or "").split(" · ")
+        pista = partes[1] if len(partes) >= 3 else (o.get("modalidad") or "zona")
+        modo = "remoto" if pista.startswith("remoto") else pista
         p = puntuar({**o, "modo": modo}, cfg)
         total += 1
         if p["score"] != o["score"] or p["nivel"] != o["nivel"]:

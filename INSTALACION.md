@@ -14,10 +14,18 @@ jobradar/
 
 | Modo | Dónde | Cómo |
 |---|---|---|
-| Remoto | Toda España | filtro «En remoto» de LinkedIn |
-| Híbrido y presencial | Cantabria y Bilbao + 40 km | filtros «Híbrido» y «Presencial» |
+| Remoto | Toda España | filtro «En remoto» de LinkedIn, 3 páginas (30 ofertas) por palabra |
+| Tu zona | Cantabria, y Bilbao + 40 km | híbrido y presencial en una sola búsqueda, 1 página |
 
-Cada pasada cruza las **7 palabras clave** (`java spring`, `desarrollador backend java`, `backend developer java`, `spring boot`, `analista programador`, `analista funcional`, `python backend`) con esos 5 modos.
+Cada pasada cruza las **7 palabras clave** (`java spring`, `desarrollador backend java`, `backend developer java`, `spring boot`, `analista programador`, `analista funcional`, `python backend`) con esos 3 modos: unas 35 peticiones.
+
+**La modalidad se saca del título y la descripción, no del filtro de la búsqueda.** En zonas pequeñas LinkedIn ignora el filtro híbrido/presencial, y además hay ofertas como «Desarrollador JAVA – REMOTO» que aparecen en la búsqueda de Bilbao. Así queda cada oferta:
+- **Remoto**, si el título dice remoto.
+- **Remoto que pide oficina**, si el título dice hybrid pero salió en la búsqueda remota. Si esa oficina está lejos, se filtra.
+- **Híbrido**, si la descripción habla de días de oficina.
+- **Presencial**, si no dice nada.
+
+Cuando hay pocas coincidencias, LinkedIn rellena con cualquier cosa (conductores, prensa…). Esas ofertas se descartan por título como «No es un puesto de informática», sin abrirlas.
 
 **Cuándo busca** se elige en ⚙ Ajustes → 🕑 Cuándo buscar ofertas:
 - **A horas fijas**: de serie a las 08:40, 13:40 y 19:40.

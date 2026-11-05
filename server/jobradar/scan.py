@@ -45,8 +45,10 @@ def _pasada(db, cfg, tpr):
     candidatas, vistos = [], set()
     try:
         for kw, modo in busquedas:
-            for pag in range(int(modo.get("paginas", 1))):
-                code, tarjetas = linkedin.buscar(kw, modo, pag * linkedin.POR_PAGINA, tpr, cfg["data_dir"] + "/debug")
+            start = 0
+            for _ in range(int(modo.get("paginas", 1))):
+                code, tarjetas = linkedin.buscar(kw, modo, start, tpr, cfg["data_dir"] + "/debug")
+                start += len(tarjetas)
                 res["peticiones"] += 1
                 res["tarjetas"] += len(tarjetas)
                 for t in tarjetas:

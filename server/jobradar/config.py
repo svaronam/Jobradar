@@ -19,13 +19,12 @@ DEFAULT = {
         "python backend",
     ],
     "modos": [
-        # remoto: toda España
-        {"nombre": "remoto", "location": "España", "geoId": "105646813", "f_WT": "2", "paginas": 2},
-        # híbrido y presencial: solo tu zona
-        {"nombre": "hibrido", "location": "Cantabria, España", "f_WT": "3", "paginas": 1},
-        {"nombre": "presencial", "location": "Cantabria, España", "f_WT": "1", "paginas": 1},
-        {"nombre": "hibrido", "location": "Bilbao, País Vasco, España", "distance": "25", "f_WT": "3", "paginas": 1},
-        {"nombre": "presencial", "location": "Bilbao, País Vasco, España", "distance": "25", "f_WT": "1", "paginas": 1},
+        # remoto: toda España (aquí LinkedIn sí respeta el filtro)
+        {"nombre": "remoto", "location": "España", "geoId": "105646813", "f_WT": "2", "paginas": 3},
+        # tu zona: LinkedIn no distingue bien híbrido/presencial en zonas pequeñas, así que se pide todo lo que no es
+        # remoto de una vez y la modalidad se saca del título y la descripción
+        {"nombre": "zona", "location": "Cantabria, España", "f_WT": "1,3", "paginas": 1},
+        {"nombre": "zona", "location": "Bilbao, País Vasco, España", "distance": "25", "f_WT": "1,3", "paginas": 1},
     ],
     # cuándo buscar: "horas" = a las horas_pasada · "intervalo" = cada cada_horas entre desde y hasta
     "frecuencia": {"modo": "horas", "cada_horas": 3, "desde": "08:00", "hasta": "22:00", "dias": [0, 1, 2, 3, 4, 5, 6]},
@@ -79,6 +78,11 @@ def _leer(path):
         return {k: v for k, v in json.load(f).items() if not k.startswith("_")}
 
 
+# los modos de la v1.0 (híbrido y presencial por separado): si el config.json de la Pi los tiene tal cual, se cambian
+MODOS_V1 = [("remoto", "España", "2"), ("hibrido", "Cantabria, España", "3"), ("presencial", "Cantabria, España", "1"),
+            ("hibrido", "Bilbao, País Vasco, España", "3"), ("presencial", "Bilbao, País Vasco, España", "1")]
+
+
 def cargar(base_dir):
     data = os.path.join(base_dir, "data")
     os.makedirs(os.path.join(data, "cv"), exist_ok=True)
@@ -86,6 +90,8 @@ def cargar(base_dir):
     os.makedirs(os.path.join(data, "debug"), exist_ok=True)
     cfg = _merge(DEFAULT, _leer(os.path.join(base_dir, "config.json")))
     cfg = _merge(cfg, _leer(os.path.join(data, "ajustes.json")))
+    if [(m.get("nombre"), m.get("location"), m.get("f_WT")) for m in cfg.get("modos") or []] == MODOS_V1:
+        cfg["modos"] = copy.deepcopy(DEFAULT["modos"])
     if os.environ.get("JOBRADAR_PUERTO"):
         cfg["puerto"] = int(os.environ["JOBRADAR_PUERTO"])
     cfg["base_dir"] = base_dir

@@ -13,13 +13,11 @@
   "palabras_clave": ["java spring", "desarrollador backend java", "backend developer java", "spring boot",
                      "analista programador", "analista funcional", "python backend"],
 
-  "_modos": "Cada palabra clave se busca en cada modo. f_WT: 1 presencial, 2 remoto, 3 híbrido. distance en millas. Los km de verdad se calculan desde Limpias.",
+  "_modos": "Cada palabra clave se busca en cada modo. f_WT: 1 presencial, 2 remoto, 3 híbrido. En tu zona se piden juntos (1,3) porque LinkedIn no los distingue bien y la modalidad se saca del texto. distance en millas. Los km de verdad se calculan desde Limpias. La búsqueda pública da 10 ofertas por página.",
   "modos": [
-    {"nombre": "remoto", "location": "España", "geoId": "105646813", "f_WT": "2", "paginas": 2},
-    {"nombre": "hibrido", "location": "Cantabria, España", "f_WT": "3", "paginas": 1},
-    {"nombre": "presencial", "location": "Cantabria, España", "f_WT": "1", "paginas": 1},
-    {"nombre": "hibrido", "location": "Bilbao, País Vasco, España", "distance": "25", "f_WT": "3", "paginas": 1},
-    {"nombre": "presencial", "location": "Bilbao, País Vasco, España", "distance": "25", "f_WT": "1", "paginas": 1}
+    {"nombre": "remoto", "location": "España", "geoId": "105646813", "f_WT": "2", "paginas": 3},
+    {"nombre": "zona", "location": "Cantabria, España", "f_WT": "1,3", "paginas": 1},
+    {"nombre": "zona", "location": "Bilbao, País Vasco, España", "distance": "25", "f_WT": "1,3", "paginas": 1}
   ],
 
   "perfil": {

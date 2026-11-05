@@ -54,6 +54,14 @@ class TestLinkedIn(unittest.TestCase):
         self.assertIn("f_WT=2", u)
         self.assertIn("start=25", u)
         self.assertIn("geoId=105646813", u)
+        z = linkedin.url_busqueda("java", config.DEFAULT["modos"][1], 0, "r86400")
+        self.assertIn("f_WT=1%2C3", z)
+
+    def test_migra_modos_v1(self):
+        d = tempfile.mkdtemp()
+        with open(os.path.join(d, "config.json"), "w") as f:
+            json.dump({"modos": [{"nombre": n, "location": l, "f_WT": w} for n, l, w in config.MODOS_V1]}, f)
+        self.assertEqual([m["nombre"] for m in config.cargar(d)["modos"]], ["remoto", "zona", "zona"])
 
 
 class TestGeo(unittest.TestCase):
@@ -98,6 +106,19 @@ class TestPuntuar(unittest.TestCase):
         p = self.oferta(lugar="Madrid, España", descripcion="Java Spring. Tendrás que venir 2 días a la semana a nuestra oficina.")
         self.assertEqual(p["modalidad"], "remoto?")
         self.assertEqual(p["nivel"], "filtrada")
+
+    def test_modalidad_por_texto(self):
+        self.assertEqual(self.oferta(titulo="Desarrollador JAVA - REMOTO", modo="zona", lugar="Bilbao")["modalidad"], "remoto")
+        p = self.oferta(titulo="Java Backend Developer - Hybrid", modo="remoto", lugar="Málaga, España")
+        self.assertEqual(p["modalidad"], "remoto?")
+        self.assertEqual(self.oferta(modo="zona", lugar="Santander", descripcion="Java. Modelo híbrido")["modalidad"], "hibrido")
+        self.assertEqual(self.oferta(modo="zona", lugar="Santander", descripcion="Java Spring")["modalidad"], "presencial")
+
+    def test_fuera_de_sector(self):
+        self.assertTrue(puntuar.prefiltro("Conductor/a AUTÓNOMO C+E con ADR en Cantabria", self.cfg))
+        self.assertTrue(puntuar.prefiltro("Coordinador/a de Prensa y RRPP", self.cfg))
+        self.assertFalse(puntuar.prefiltro("Analista Informático-a", self.cfg))
+        self.assertFalse(puntuar.prefiltro("Jefe de proyecto IT", self.cfg))
 
     def test_sueldo_bajo_penaliza(self):
         a = self.oferta(sueldo_txt="28.000 €")["score"]

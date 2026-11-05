@@ -17,7 +17,7 @@ from . import util
 BASE = "https://www.linkedin.com"
 LISTA = BASE + "/jobs-guest/jobs/api/seeMoreJobPostings/search"
 DETALLE = BASE + "/jobs-guest/jobs/api/jobPosting/{id}"
-POR_PAGINA = 25
+POR_PAGINA = 10  # la búsqueda pública devuelve 10 ofertas por página
 
 
 def url_busqueda(palabras, modo, start=0, tpr="r86400"):

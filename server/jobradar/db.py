@@ -155,8 +155,8 @@ class DB:
     def para_recalcular(self):
         with self._c() as c:
             return [self._dict(r) for r in c.execute(
-                "SELECT id, titulo, empresa, lugar, modalidad, fecha_pub, descripcion, sueldo_txt, seniority, tipo_empleo, "
-                "candidatos, score, nivel FROM ofertas WHERE estado != 'descartada'")]
+                "SELECT id, titulo, empresa, lugar, modalidad, busqueda, fecha_pub, descripcion, sueldo_txt, seniority, "
+                "tipo_empleo, candidatos, score, nivel FROM ofertas WHERE estado != 'descartada'")]
 
     def pendientes_cv(self):
         with self._c() as c:
