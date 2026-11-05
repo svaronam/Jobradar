@@ -239,6 +239,10 @@ def programador(db, cfg):
 
 
 def servir(db, cfg):
+    try:  # por si el baremo de serie ha cambiado con una actualización
+        log.info("Ofertas repuntuadas al arrancar: %s", puntuar.recalcular(db, cfg))
+    except Exception:  # noqa: BLE001
+        log.exception("No se pudieron repuntuar las ofertas")
     threading.Thread(target=programador, args=(db, cfg), daemon=True).start()
     srv = ThreadingHTTPServer((cfg["host"], int(cfg["puerto"])), make_handler(db, cfg))
     log.info("JobRadar %s escuchando en http://%s:%s", VERSION, cfg["host"], cfg["puerto"])

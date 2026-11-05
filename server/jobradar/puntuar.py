@@ -1,17 +1,19 @@
 """Baremo de 0 a 100, explicado punto a punto, según tus prioridades.
 
-| Criterio                         | Máx | Cómo                                                                 |
-|----------------------------------|-----|----------------------------------------------------------------------|
-| Modalidad y distancia a Limpias  |  30 | remoto 30 · híbrido 25→12 según km · presencial 18→5 según km         |
-| Tipo de puesto                   |  20 | backend / Java / analista programador 20 · analista funcional 15 ...  |
-| Encaje del stack                 |  25 | Java, Spring, Batch, SQL, microservicios, Python... (resta si el      |
-|                                  |     | lenguaje principal es otro: .NET, PHP, Node...)                       |
-| Experiencia pedida               |  10 | lo que piden frente a tus años                                        |
-| Sueldo publicado                 |  10 | ≥ objetivo 10 · ≥ mínimo 7 · sin publicar 3 · por debajo del mínimo −15 |
-| Frescura y competencia           |   5 | publicada hace < 24 h, pocos candidatos                               |
+La búsqueda es genérica (programador, desarrollador, analista... con cualquier lenguaje): lo que pide la oferta
+lo cubre el CV adaptado, así que el stack solo da puntos extra y no hunde la nota.
+
+| Criterio                         | Máx | Cómo                                                                  |
+|----------------------------------|-----|-----------------------------------------------------------------------|
+| Modalidad y distancia a Limpias  |  30 | remoto 30 · híbrido 25→12 según km · presencial 18→5 según km          |
+| Tipo de puesto                   |  20 | desarrollo (cualquier lenguaje) y analista 20 · liderazgo 15 · datos 12 |
+| Experiencia pedida               |  15 | lo que piden frente a tus años                                         |
+| Sueldo publicado                 |  15 | ≥ objetivo 15 · ≥ mínimo 10 · sin publicar 4 · por debajo del mínimo −15 |
+| Extra: encaje con tu stack       |  15 | Java, Spring, SQL, Python... que ya tienes en el CV                    |
+| Frescura y competencia           |   5 | publicada hace < 24 h, pocos candidatos                                |
 
 Fuera de tu zona sin ser remoto, empresa excluida o prácticas -> filtrada (se guarda, no se avisa).
-Todos los números se cambian desde la app (⚙ → Baremo) o en config.json -> "pesos", sin tocar código.
+Todos los números se cambian desde la app (⚖ Baremo) o en config.json -> "pesos", sin tocar código.
 """
 import copy
 import datetime as dt
@@ -25,13 +27,13 @@ PESOS = {
     "hibrido": [[20, 25], [40, 22], [60, 18], [80, 12]],      # [hasta km, puntos]
     "presencial": [[20, 18], [40, 14], [60, 10], [80, 5]],
     "remoto_con_oficina": -25,
-    "rol": {"backend": 20, "java": 20, "analista_programador": 20, "analista_funcional": 15, "fullstack": 12,
-            "desarrollador": 14, "lider": 12, "data": 8, "otro": 4},
-    "stack_max": 25,
-    "lenguaje_ajeno": -15,
-    "experiencia": {"encaja": 10, "algo_mas": 5, "mucho_mas": 0, "junior": 3, "sin_dato": 6,
+    "rol": {"backend": 20, "java": 20, "analista_programador": 20, "analista_funcional": 20, "fullstack": 20,
+            "desarrollador": 20, "lider": 15, "data": 12, "otro": 5},
+    "stack_max": 15,
+    "lenguaje_ajeno": 0,   # pon un negativo si algún día quieres primar Java/Python otra vez
+    "experiencia": {"encaja": 15, "algo_mas": 8, "mucho_mas": 0, "junior": 4, "sin_dato": 9,
                     "margen_encaja": 1, "margen_algo_mas": 3},  # años por encima de los tuyos que aún cuentan
-    "sueldo": {"objetivo": 10, "minimo": 7, "sin_publicar": 3, "por_debajo": -15},
+    "sueldo": {"objetivo": 15, "minimo": 10, "sin_publicar": 4, "por_debajo": -15},
     "fresca_24h": 3, "pocos_candidatos": 2, "muchos_candidatos": -2,
     "temporal": -5,
 }
@@ -98,7 +100,8 @@ def rol_de(titulo):
         return "lider", "Liderazgo / arquitectura"
     if re.search(r"data engineer|ingeniero de datos|etl|big data", t):
         return "data", "Datos"
-    if re.search(r"desarrollador|developer|programador|ingenier[oa] (de )?software|software engineer|devops", t):
+    if re.search(r"desarrollador|developer|programador|ingenier[oa] (de )?software|software engineer|devops|"
+                 r"front[- ]?end|android|\bios\b|mobile|movil", t):
         return "desarrollador", "Desarrollo (genérico)"
     return "otro", "Otro"
 
@@ -266,10 +269,10 @@ def puntuar(o, cfg, ahora=None):
             tiene.append(nombre)
             suma += P["stack"].get(nombre, pts)
     falta = [n for n, rx in AJENAS if re.search(rx, ntodo)]
-    des.append([f"Stack: {', '.join(tiene[:6]) or 'nada de tu stack'}", min(P["stack_max"], suma)])
+    des.append([f"Extra stack: {', '.join(tiene[:6]) or 'nada de tu stack'}", min(P["stack_max"], suma)])
     ajeno_tit = re.search(LENGUAJE_AJENO, ntit)
     java_py = re.search(r"\bjava\b(?!\s*script)|\bpython\b", ntodo)
-    if ajeno_tit or (not java_py and len(re.findall(LENGUAJE_AJENO, ntodo)) >= 2):
+    if P["lenguaje_ajeno"] and (ajeno_tit or (not java_py and len(re.findall(LENGUAJE_AJENO, ntodo)) >= 2)):
         des.append(["Lenguaje principal distinto de Java/Python", P["lenguaje_ajeno"]])
 
     # --- experiencia

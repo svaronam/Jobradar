@@ -9,14 +9,15 @@ DEFAULT = {
     "token": "",
 
     # Lo que se busca en LinkedIn. Cada palabra clave se cruza con cada modo.
+    # búsqueda genérica: cualquier puesto de programación o análisis, pida el lenguaje que pida
     "palabras_clave": [
-        "java spring",
-        "desarrollador backend java",
-        "backend developer java",
-        "spring boot",
+        "programador",
+        "desarrollador",
+        "developer",
+        "software engineer",
+        "backend",
         "analista programador",
         "analista funcional",
-        "python backend",
     ],
     "modos": [
         # remoto: toda España (aquí LinkedIn sí respeta el filtro)
@@ -40,10 +41,10 @@ DEFAULT = {
         "sueldo_objetivo": 45000,
     },
     # títulos que ni se abren (se guardan como filtrados para no volver a mirarlos)
-    "excluir_titulo": ["frontend", "front-end", "front end", "qa ", "tester", "testing", "comercial", "ventas",
-                       "salesforce", "sap ", "abap", ".net", "c#", "php", "android", "ios ", "becario", "becaria",
+    # solo lo que no es programar ni analizar (las tecnologías no se excluyen: para eso se adapta el CV)
+    "excluir_titulo": ["qa ", "tester", "testing", "comercial", "ventas", "sales ", "becario", "becaria",
                        "prácticas", "practicas", "internship", "intern ", "profesor", "formador", "help desk",
-                       "soporte técnico", "técnico de soporte", "microinformática", "data scientist", "diseñador"],
+                       "soporte técnico", "técnico de soporte", "microinformática", "diseñador", "designer"],
     "excluir_empresas": [],
 
     "gemini_api_key": "",
@@ -83,6 +84,15 @@ MODOS_V1 = [("remoto", "España", "2"), ("hibrido", "Cantabria, España", "3"), 
             ("hibrido", "Bilbao, País Vasco, España", "3"), ("presencial", "Bilbao, País Vasco, España", "1")]
 
 
+# valores de la v1 que install.sh copió a config.json: si siguen tal cual, se cambian por los nuevos
+EXCLUIR_V1 = ["frontend", "front-end", "front end", "qa ", "tester", "testing", "comercial", "ventas",
+              "salesforce", "sap ", "abap", ".net", "c#", "php", "android", "ios ", "becario", "becaria",
+              "prácticas", "practicas", "internship", "intern ", "profesor", "formador", "help desk",
+              "soporte técnico", "técnico de soporte", "microinformática", "data scientist", "diseñador"]
+PALABRAS_V1 = ["java spring", "desarrollador backend java", "backend developer java", "spring boot",
+               "analista programador", "analista funcional", "python backend"]
+
+
 def cargar(base_dir):
     data = os.path.join(base_dir, "data")
     os.makedirs(os.path.join(data, "cv"), exist_ok=True)
@@ -92,6 +102,11 @@ def cargar(base_dir):
     cfg = _merge(cfg, _leer(os.path.join(data, "ajustes.json")))
     if [(m.get("nombre"), m.get("location"), m.get("f_WT")) for m in cfg.get("modos") or []] == MODOS_V1:
         cfg["modos"] = copy.deepcopy(DEFAULT["modos"])
+    # (también si se guardaron tal cual desde la app: el formulario de Ajustes manda la lista entera)
+    if [x.strip() for x in cfg.get("excluir_titulo") or []] == [x.strip() for x in EXCLUIR_V1]:
+        cfg["excluir_titulo"] = list(DEFAULT["excluir_titulo"])
+    if cfg.get("palabras_clave") == PALABRAS_V1:
+        cfg["palabras_clave"] = list(DEFAULT["palabras_clave"])
     if os.environ.get("JOBRADAR_PUERTO"):
         cfg["puerto"] = int(os.environ["JOBRADAR_PUERTO"])
     cfg["base_dir"] = base_dir

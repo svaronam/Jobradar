@@ -10,8 +10,9 @@
   "horas_pasada": ["08:40", "13:40", "19:40"],
   "_frecuencia": "modo 'horas' = a las horas_pasada · modo 'intervalo' = cada cada_horas (mínimo 1) entre desde y hasta. dias: 0 = lunes … 6 = domingo. Mejor cambiarlo desde la app (⚙ → Cuándo buscar). Cada pasada son ~35 peticiones + una por oferta nueva.",
 
-  "palabras_clave": ["java spring", "desarrollador backend java", "backend developer java", "spring boot",
-                     "analista programador", "analista funcional", "python backend"],
+  "palabras_clave": ["programador", "desarrollador", "developer", "software engineer", "backend",
+                     "analista programador", "analista funcional"],
+  "_palabras_clave": "Búsqueda genérica a propósito: el lenguaje que pida la oferta da igual, para eso se adapta el CV.",
 
   "_modos": "Cada palabra clave se busca en cada modo. f_WT: 1 presencial, 2 remoto, 3 híbrido. En tu zona se piden juntos (1,3) porque LinkedIn no los distingue bien y la modalidad se saca del texto. distance en millas. Los km de verdad se calculan desde Limpias. La búsqueda pública da 10 ofertas por página.",
   "modos": [

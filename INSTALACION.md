@@ -1,6 +1,6 @@
 # JobRadar
 
-Busca en LinkedIn ofertas de **backend Java/Spring, analista programador y analista**, las puntúa de 0 a 100 según tus prioridades, te prepara **un CV adaptado a cada oferta** y te avisa en el móvil por Tailscale. De momento no se postula: tú abres la oferta, miras el CV y decides.
+Busca en LinkedIn ofertas de **programador, desarrollador o analista, con cualquier lenguaje**, las puntúa de 0 a 100 según tus prioridades, te prepara **un CV adaptado a cada oferta** y te avisa en el móvil por Tailscale. De momento no se postula: tú abres la oferta, miras el CV y decides.
 
 ```
 jobradar/
@@ -17,7 +17,9 @@ jobradar/
 | Remoto | Toda España | filtro «En remoto» de LinkedIn, 3 páginas (30 ofertas) por palabra |
 | Tu zona | Cantabria, y Bilbao + 40 km | híbrido y presencial en una sola búsqueda, 1 página |
 
-Cada pasada cruza las **7 palabras clave** (`java spring`, `desarrollador backend java`, `backend developer java`, `spring boot`, `analista programador`, `analista funcional`, `python backend`) con esos 3 modos: unas 35 peticiones.
+Cada pasada cruza las **7 palabras clave** (`programador`, `desarrollador`, `developer`, `software engineer`, `backend`, `analista programador`, `analista funcional`) con esos 3 modos: unas 35 peticiones. Las palabras clave se editan en ⚙ Ajustes.
+
+**La búsqueda es genérica a propósito.** Da igual el lenguaje o las herramientas que pida la oferta, porque eso lo cubre el CV adaptado: pone delante lo transferible (APIs, microservicios, SQL, batch, testing, arquitectura) sin decir que sabes lo que no sabes. Por eso no se descarta ninguna tecnología, y tu stack solo da **puntos extra**: a igualdad de lo demás, una oferta de Java sale por encima de una de .NET, pero las dos te llegan.
 
 **La modalidad se saca del título y la descripción, no del filtro de la búsqueda.** En zonas pequeñas LinkedIn ignora el filtro híbrido/presencial, y además hay ofertas como «Desarrollador JAVA – REMOTO» que aparecen en la búsqueda de Bilbao. Así queda cada oferta:
 - **Remoto**, si el título dice remoto.
@@ -38,7 +40,7 @@ Si la Pi estuvo apagada, recupera la búsqueda perdida al encenderse. Cada búsq
 
 Aparte, el móvil pregunta a la Pi si hay avisos nuevos cada 30 min. Eso se cambia en *Ajustes de la app* (mínimo 15 min, por límite de Android).
 
-Solo se abre el detalle de las ofertas **nuevas**, y antes se descartan por título (frontend, QA, .NET, PHP, prácticas…). La lista de exclusiones se edita en ⚙ Ajustes.
+Solo se abre el detalle de las ofertas **nuevas**, y antes se descartan por título las que no son de programar ni analizar (QA, comercial, soporte, prácticas, diseño…). La lista de exclusiones se edita en ⚙ Ajustes.
 
 Lee la **búsqueda pública de LinkedIn, sin iniciar sesión**: no usa tu cuenta, así que no te la pueden restringir. Va despacio, con 3-7 s entre peticiones. Si LinkedIn empieza a limitar, la pasada se corta sola y te llega un aviso «⚠ Estado del radar».
 
@@ -47,12 +49,12 @@ Lee la **búsqueda pública de LinkedIn, sin iniciar sesión**: no usa tu cuenta
 | Criterio | Puntos |
 |---|---|
 | **Modalidad y distancia a Limpias** | remoto 30 · híbrido 25 / 22 / 18 / 12 (≤ 20, 40, 60, 80 km) · presencial 18 / 14 / 10 / 5 |
-| **Puesto** | backend, desarrollo Java o analista programador 20 · analista funcional 15 · desarrollo genérico 14 · full stack o liderazgo 12 · datos 8 · otro 4 |
-| **Stack** (máx. 25) | Java 6 · Spring Boot 5 · Spring Batch 4 · SQL, microservicios y Python 3 · JPA, REST, JUnit, AWS, DDD y análisis funcional 2… |
-| **Experiencia pedida** | hasta 6 años 10 · 7-8 años 5 · más de 8 años 0 · junior 3 · sin indicar 6 |
-| **Sueldo** | ≥ objetivo (45k) 10 · ≥ mínimo (35k) 7 · sin publicar 3 · **por debajo del mínimo −15** |
+| **Puesto** | desarrollo (cualquier lenguaje, backend, frontend, full stack, móvil) y analista 20 · liderazgo o arquitectura 15 · datos 12 · otro 5 |
+| **Experiencia pedida** | hasta 6 años 15 · 7-8 años 8 · más de 8 años 0 · junior 4 · sin indicar 9 |
+| **Sueldo** | ≥ objetivo (45k) 15 · ≥ mínimo (35k) 10 · sin publicar 4 · **por debajo del mínimo −15** |
+| **Extra: tu stack** (máx. 15) | Java 6 · Spring Boot 5 · Spring Batch 4 · SQL, microservicios y Python 3 · JPA, REST, JUnit, AWS… 2. Lo que no tienes no resta |
 | **Frescura** | menos de 24 h +3 · menos de 25 candidatos +2 · más de 200 −2 |
-| **Penalizaciones** | lenguaje principal distinto (.NET, PHP, Node…) −15 · contrato temporal −5 · «remoto» que pide ir a la oficina −25 |
+| **Penalizaciones** | contrato temporal −5 · «remoto» que pide ir a la oficina −25 · lenguaje principal distinto 0 (actívalo en ⚖ si algún día quieres primar Java) |
 
 Niveles: **🔴 Prioritaria ≥ 75** (suena) · **🟠 Interesante ≥ 58** · **🔵 A vigilar ≥ 40** (sin sonido) · **Baja < 40** (solo en la lista).
 

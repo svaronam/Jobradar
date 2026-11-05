@@ -269,9 +269,12 @@ REGLAS ESTRICTAS (si las rompes, el cambio se descarta automáticamente):
    usando solo hechos del CV. Puedes destacar con **negrita** 2-4 cosas.
 5. "titular": la línea bajo el nombre, p. ej. "Back-End Developer | Java · Spring Boot". Solo con lo que ya hay en el CV.
 6. "orden_secciones": las 4 secciones ({', '.join(SECCIONES)}) en el orden más conveniente para esta oferta.
-7. "requisitos": los 5-10 requisitos principales de la oferta y si el CV los cumple (si/parcial/no), con la evidencia
+7. Si la oferta pide un lenguaje o herramientas que el CV no tiene (p. ej. .NET, PHP, React), NO los menciones como
+   propios: pon delante lo transferible que sí está en el CV (diseño de APIs REST y microservicios, SQL, procesos batch,
+   testing, arquitectura hexagonal/DDD, Scrum, Git/CI, análisis) para que se vea que encaja igual.
+8. "requisitos": los 5-10 requisitos principales de la oferta y si el CV los cumple (si/parcial/no), con la evidencia
    del CV en pocas palabras.
-8. "cambios": 3-6 frases cortas en español explicando qué has cambiado y por qué.
+9. "cambios": 3-6 frases cortas en español explicando qué has cambiado y por qué.
 
 OFERTA
 Puesto: {o.get('titulo')}

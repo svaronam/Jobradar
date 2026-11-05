@@ -62,6 +62,11 @@ class TestLinkedIn(unittest.TestCase):
         with open(os.path.join(d, "config.json"), "w") as f:
             json.dump({"modos": [{"nombre": n, "location": l, "f_WT": w} for n, l, w in config.MODOS_V1]}, f)
         self.assertEqual([m["nombre"] for m in config.cargar(d)["modos"]], ["remoto", "zona", "zona"])
+        with open(os.path.join(d, "config.json"), "w") as f:
+            json.dump({"palabras_clave": config.PALABRAS_V1, "excluir_titulo": config.EXCLUIR_V1}, f)
+        c = config.cargar(d)
+        self.assertEqual(c["palabras_clave"], config.DEFAULT["palabras_clave"])
+        self.assertNotIn(".net", c["excluir_titulo"])
 
 
 class TestGeo(unittest.TestCase):
@@ -125,13 +130,21 @@ class TestPuntuar(unittest.TestCase):
         b = self.oferta()["score"]
         self.assertLess(a, b)
 
-    def test_lenguaje_ajeno(self):
+    def test_cualquier_lenguaje(self):
+        # el lenguaje da igual: una oferta remota de Node no se filtra ni se penaliza, solo no suma el extra de stack
         p = self.oferta(titulo="Backend Developer Node.js", descripcion="Node.js, TypeScript, MongoDB")
-        self.assertLess(p["score"], 60)
+        self.assertFalse(p["filtro"])
+        self.assertGreaterEqual(p["score"], 58)
+        self.assertNotIn("Lenguaje principal distinto de Java/Python", [c for c, _ in p["desglose"]])
+        self.assertEqual(puntuar.rol_de("Frontend Developer React")[0], "desarrollador")
+        self.cfg["pesos"] = {"lenguaje_ajeno": -15}  # se puede volver a activar desde el baremo
+        self.assertIn(-15, [x for _, x in self.oferta(titulo="Backend Developer Node.js", descripcion="Node.js")["desglose"]])
 
     def test_excluidos(self):
-        self.assertTrue(puntuar.prefiltro("Frontend Developer", self.cfg))
-        self.assertTrue(puntuar.prefiltro("Desarrollador .NET", self.cfg))
+        self.assertFalse(puntuar.prefiltro("Frontend Developer", self.cfg))   # ya no se excluyen tecnologías
+        self.assertFalse(puntuar.prefiltro("Desarrollador .NET", self.cfg))
+        self.assertTrue(puntuar.prefiltro("Comercial de software", self.cfg))
+        self.assertTrue(puntuar.prefiltro("QA Tester", self.cfg))
         self.assertFalse(puntuar.prefiltro("Aquatic backend Java", self.cfg))  # 'qa' no casa dentro de palabra
         self.cfg["excluir_empresas"] = ["Cárnica SL"]
         self.assertEqual(self.oferta(empresa="carnica sl")["nivel"], "filtrada")
@@ -159,7 +172,7 @@ class TestBaremo(unittest.TestCase):
         self.assertEqual(r["revisadas"], 1)
         self.assertGreater(nuevo["score"], p["score"])
         self.assertIn(["Híbrido a ~44 km", 30], nuevo["desglose"])
-        self.assertEqual(puntuar.pesos(cfg)["sueldo"]["minimo"], 7)  # lo no tocado sigue de serie
+        self.assertEqual(puntuar.pesos(cfg)["sueldo"]["minimo"], puntuar.PESOS["sueldo"]["minimo"])  # lo no tocado sigue de serie
 
     def test_validaciones(self):
         with self.assertRaises(ValueError):

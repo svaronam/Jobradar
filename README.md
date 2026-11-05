@@ -14,9 +14,9 @@ De momento no se postula solo: avisa, prepara el CV y la decisión es mía.
 
 ## Qué hace
 
-- **Busca** ofertas en remoto en toda España, y ofertas híbridas o presenciales solo cerca de casa, cruzando varias palabras clave.
+- **Busca** ofertas de programación y análisis **con cualquier lenguaje** en remoto en toda España, y ofertas híbridas o presenciales solo cerca de casa. El encaje con cada tecnología lo resuelve el CV adaptado, no el filtro.
   - Solo abre el detalle de las ofertas nuevas.
-  - Antes descarta por título las que no interesan (frontend, QA, .NET, prácticas…).
+  - Antes descarta por título lo que no es programar ni analizar (QA, comercial, soporte, prácticas…) y el relleno que mete LinkedIn.
 - **Puntúa** cada oferta y explica de dónde sale cada punto. Tiene en cuenta:
   - modalidad y distancia por carretera,
   - tipo de puesto,
