@@ -140,7 +140,7 @@ Con el nivel gratuito sobra para unas decenas de CV al día. Entre CV hay 4 s de
 ## 3 · APK
 
 1. Crea el repo `github.com/svaronam/jobradar` y sube **toda** la carpeta `jobradar/`, incluida `.github/`. `server/data/` está en `.gitignore`, así que tu CV y tus datos no se suben.
-2. Crea la clave de firma y añádela como secretos del repo (*Settings → Secrets and variables → Actions*):
+2. *(Recomendado)* Crea la clave de firma y añádela como secretos del repo (*Settings → Secrets and variables → Actions*). Sin ellos la APK compila igual, pero firmada con una clave provisional distinta en cada compilación, así que para instalar una versión nueva tendrás que desinstalar la anterior:
    ```bash
    keytool -genkeypair -v -keystore jobradar.jks -alias jobradar -keyalg RSA -keysize 2048 -validity 10000
    base64 -w0 jobradar.jks     # → secreto KEYSTORE_BASE64
