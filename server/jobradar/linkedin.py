@@ -62,6 +62,16 @@ def _id_de(card):
     return None
 
 
+def _logo(raiz):
+    """URL del logo de la empresa (LinkedIn la pone en data-delayed-url para cargarla después)."""
+    for img in raiz.select("img"):
+        for attr in ("data-delayed-url", "data-ghost-url", "src"):
+            u = (img.get(attr) or "").strip()
+            if u.startswith("https://") and "licdn.com" in u and "ghost" not in u:
+                return u
+    return ""
+
+
 def parsear_lista(html):
     """Tarjetas de un trozo del listado. Devuelve lista de dicts."""
     soup = BeautifulSoup(html, "html.parser")
@@ -89,6 +99,7 @@ def parsear_lista(html):
             "fecha_pub": (t.get("datetime") if t else "") or "",
             "sueldo_txt": _txt(sal),
             "url": url_oferta(jid),
+            "logo_url": _logo(c),
         })
     return out
 
@@ -111,6 +122,7 @@ def parsear_detalle(html):
         "descripcion": util.texto_html(desc) if desc else "",
         "candidatos_txt": _txt(_uno(soup, ".num-applicants__caption", "figcaption.num-applicants__caption", ".topcard__flavor--metadata")),
         "sueldo_txt": _txt(_uno(soup, ".compensation__salary", ".salary", ".compensation__salary-range")),
+        "logo_url": _logo(soup.select_one(".top-card-layout") or soup),
     }
     for item in soup.select(".description__job-criteria-item, ul.description__job-criteria-list li"):
         h = util.norm(_txt(item.select_one("h3") or item.select_one(".description__job-criteria-subheader")))

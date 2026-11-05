@@ -1,5 +1,7 @@
 """Una pasada: busca en LinkedIn, abre solo las ofertas nuevas, las puntúa, guarda y prepara su CV."""
+import hashlib
 import logging
+import os
 import threading
 import time
 
@@ -54,6 +56,10 @@ def _pasada(db, cfg, tpr):
                 for t in tarjetas:
                     if t["job_id"] in vistos:
                         continue
+                    if t.get("logo_url"):  # ofertas de antes de tener logos: se completa al volver a verlas
+                        oid = db.sin_logo("li:" + t["job_id"])
+                        if oid:
+                            guardar_logo(db, cfg, oid, t["empresa"], t["logo_url"])
                     vistos.add(t["job_id"])
                     t["modo"], t["busqueda"] = modo["nombre"], f"{kw} · {modo['nombre']} · {modo['location']}"
                     candidatas.append(t)
@@ -88,6 +94,37 @@ def _pasada(db, cfg, tpr):
     return res
 
 
+def _tipo_imagen(b):
+    if b[:3] == b"\xff\xd8\xff":
+        return "jpg"
+    if b[:8] == b"\x89PNG\r\n\x1a\n":
+        return "png"
+    if b[:4] == b"RIFF" and b[8:12] == b"WEBP":
+        return "webp"
+    if b[:4] == b"GIF8":
+        return "gif"
+    return None
+
+
+def guardar_logo(db, cfg, oid, empresa, url):
+    """Descarga el logo una vez por empresa a data/logos/ y lo apunta en la oferta."""
+    if not url:
+        return
+    archivo = db.logo_de_empresa(empresa) if empresa else None
+    if not archivo:
+        b = util.bajar(url)
+        ext = _tipo_imagen(b) if b else None
+        if not ext:
+            db.actualizar(oid, logo_url=url)
+            return
+        archivo = f"{hashlib.sha1((empresa or url).encode()).hexdigest()[:16]}.{ext}"
+        carpeta = os.path.join(cfg["data_dir"], "logos")
+        os.makedirs(carpeta, exist_ok=True)
+        with open(os.path.join(carpeta, archivo), "wb") as f:
+            f.write(b)
+    db.actualizar(oid, logo_url=url, logo=archivo)
+
+
 def _procesar(db, cfg, t, primera, res):
     uid = "li:" + t["job_id"]
     base = {"uid": uid, "firma": firma(t["titulo"], t["empresa"]), "titulo": t["titulo"], "empresa": t["empresa"],
@@ -118,8 +155,10 @@ def _procesar(db, cfg, t, primera, res):
             "anios_pedidos": p["anios_pedidos"],
             "cv_estado": "pendiente" if necesita_cv else "",
             "listo": 0 if necesita_cv else 1}
-    if db.guardar(fila):
+    oid = db.guardar(fila)
+    if oid:
         res["nuevas"] += 1
+        guardar_logo(db, cfg, oid, fila["empresa"], o.get("logo_url") or t.get("logo_url"))
         if p["filtro"]:
             res["filtradas"] += 1
 

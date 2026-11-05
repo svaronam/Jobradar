@@ -73,3 +73,14 @@ def texto_html(nodo):
     t = re.sub(r"[ \t ]+", " ", t)
     t = re.sub(r" *\n *", "\n", t)
     return re.sub(r"\n{3,}", "\n\n", t).strip()
+
+
+def bajar(url, max_bytes=400_000, timeout=15):
+    """Bytes de una imagen (logos del CDN de LinkedIn). None si falla o es demasiado grande."""
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": random.choice(UAS), "Accept": "image/*"})
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            b = r.read(max_bytes + 1)
+        return b if 0 < len(b) <= max_bytes else None
+    except Exception:  # noqa: BLE001
+        return None

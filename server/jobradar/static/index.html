@@ -85,7 +85,16 @@ main{padding:12px 16px 90px;max-width:780px;margin:0 auto}
   -webkit-mask:radial-gradient(circle,transparent 20px,#000 21px);mask:radial-gradient(circle,transparent 20px,#000 21px)}
 .lvl{font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-weight:700;color:var(--c)}
 .lvl .meta{text-transform:none;letter-spacing:0;font-weight:600;color:var(--mute)}
-.titular{overflow-wrap:break-word;font-weight:800;font-size:17.5px;line-height:1.25;margin:3px 0 2px}
+.titular{overflow-wrap:break-word;font-weight:800;font-size:17.5px;line-height:1.25;margin:0 0 2px}
+.cab{display:grid;grid-template-columns:44px 1fr;gap:10px;align-items:start;margin:4px 0 2px}
+.logo-emp{width:44px;height:44px;border-radius:10px;object-fit:contain;background:#fff;border:1px solid var(--line);display:block}
+.logo-ini{width:44px;height:44px;border-radius:10px;display:grid;place-items:center;font-weight:800;font-size:15px;
+  color:#fff;letter-spacing:.02em;background:var(--c-ini,#64748b)}
+.sueldo{font-size:14px;color:var(--ok);margin:4px 0 2px;line-height:1.35}
+.sueldo b{font-weight:800}
+.sueldo.bajo{color:var(--p2)}
+.sueldo.no{color:var(--mute);font-size:13px}
+.sueldo small{font-weight:600;color:var(--mute);font-size:12px;margin-left:4px}
 .sub{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;font-size:13.5px;color:var(--mute);margin-bottom:4px}
 .sub b{color:var(--ink);font-weight:700}
 .km{font-weight:700;color:var(--ink);background:var(--chip);border-radius:6px;padding:1px 7px;font-size:12.5px}
@@ -320,6 +329,29 @@ function proxTxt(ts) {
   return d.toLocaleDateString("es", {weekday: "long"}) + " a las " + hora;
 }
 
+function iniciales(t) {
+  const p = String(t || "?").replace(/[^\p{L}\p{N} ]/gu, " ").trim().split(/\s+/).filter(w => !/^(s\.?l\.?|s\.?a\.?|sl|sa|de|la|el|the|and|y)$/i.test(w));
+  return ((p[0] || "?")[0] + (p[1] ? p[1][0] : (p[0] || "").slice(1, 2))).toUpperCase();
+}
+function colorDe(t) {
+  let h = 0; for (const c of String(t || "")) h = (h * 31 + c.charCodeAt(0)) % 360;
+  return `hsl(${h} 45% 42%)`;
+}
+function logoEmp(o) {
+  const ini = `<div class="logo-ini" style="--c-ini:${colorDe(o.empresa)}">${esc(iniciales(o.empresa))}</div>`;
+  if (!o.logo) return ini;
+  // si la imagen falla, se cambia por las iniciales
+  return `<img class="logo-emp" src="${conTok(`/api/ofertas/${o.id}/logo`)}" alt="${esc(o.empresa)}" loading="lazy"
+    onerror="this.outerHTML=this.nextElementSibling.innerHTML"><template>${ini}</template>`;
+}
+function sueldoNota(o) {
+  // lo que dijo el baremo frente a tu mínimo y tu objetivo
+  const d = (o.desglose || []).map(x => x[0]).find(c => c.startsWith("Sueldo ")) || "";
+  if (d.includes("< tu mínimo")) return " · por debajo de tu mínimo";
+  if (d.includes("≥ objetivo")) return " · ≥ tu objetivo";
+  if (d.includes("≥ mínimo")) return " · ≥ tu mínimo";
+  return "";
+}
 function sueldoTxt(o) {
   if (!o.sueldo_max) return "";
   const a = Math.round(o.sueldo_min / 1000), b = Math.round(o.sueldo_max / 1000);
@@ -333,7 +365,7 @@ function tarjeta(o) {
   const abierta = S.abiertas.has(o.id);
   const tags = [];
   if (o.modalidad) tags.push(`<span class="tag">${MOD[o.modalidad] || esc(o.modalidad)}</span>`);
-  const st = sueldoTxt(o); if (st) tags.push(`<span class="tag money">💶 ${st}</span>`);
+  const st = sueldoTxt(o);
   for (const t of (enc.tiene || []).slice(0, 7)) tags.push(`<span class="tag good">${esc(t)}</span>`);
   for (const t of (enc.falta || []).slice(0, 5)) tags.push(`<span class="tag bad">✗ ${esc(t)}</span>`);
   const meta = [o.anios_pedidos ? `${o.anios_pedidos} años` : "", o.candidatos != null ? `${o.candidatos} candidatos` : "", hace(o.fecha_pub)]
@@ -353,8 +385,11 @@ function tarjeta(o) {
     <div>
       <div class="lvl" style="--c:${col}">${nt}${o.estado !== "nueva" && o.estado !== "vista" ? ` <span class="meta">· ${esc(o.estado)}</span>` : ""}
         ${meta ? `<span class="meta"> · ${esc(meta)}</span>` : ""}</div>
-      <div class="titular">${esc(o.titulo)}</div>
-      <div class="sub"><b>${esc(o.empresa)}</b><span>${esc(o.lugar)}</span>${o.km != null && o.modalidad !== "remoto" ? `<span class="km">~${o.km} km</span>` : ""}</div>
+      <div class="cab">${logoEmp(o)}<div>
+        <div class="titular">${esc(o.titulo)}</div>
+        <div class="sub"><b>${esc(o.empresa)}</b><span>${esc(o.lugar)}</span>${o.km != null && o.modalidad !== "remoto" ? `<span class="km">~${o.km} km</span>` : ""}</div>
+        ${st ? `<div class="sueldo ${sueldoNota(o).includes("debajo") ? "bajo" : ""}">💶 <b>${st}</b><small>brutos/año${sueldoNota(o)}</small></div>` : `<div class="sueldo no">💶 Sueldo sin publicar</div>`}
+      </div></div>
       ${o.filtro ? `<div class="filtro">Filtrada: ${esc(o.filtro)}</div>` : ""}
       <div class="tags">${tags.join("")}</div>
       <div class="why ${abierta ? "open" : ""}">${why}</div>

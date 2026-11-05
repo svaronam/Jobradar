@@ -33,9 +33,10 @@ CREATE TABLE IF NOT EXISTS alertas (
 );
 """
 JSON_COLS = ("desglose", "encaje", "cv_cambios")
+COLS_NUEVAS = {"logo_url": "TEXT", "logo": "TEXT"}  # logo: archivo en data/logos/
 LISTA_COLS = ("id, uid, titulo, empresa, lugar, km, modalidad, fecha_pub, url, sueldo_txt, sueldo_min, sueldo_max, "
               "candidatos, seniority, tipo_empleo, anios_pedidos, idioma, rol, score, nivel, desglose, encaje, filtro, "
-              "estado, cv_estado, cv_idioma, cv_archivo, cv_cambios, cv_error, creado")
+              "estado, cv_estado, cv_idioma, cv_archivo, cv_cambios, cv_error, creado, logo")
 
 
 class DB:
@@ -44,6 +45,10 @@ class DB:
         self.lock = threading.Lock()
         with self._c() as c:
             c.executescript(ESQUEMA)
+            tiene = {r["name"] for r in c.execute("PRAGMA table_info(ofertas)")}
+            for col, tipo in COLS_NUEVAS.items():  # migración desde la v1.0
+                if col not in tiene:
+                    c.execute(f"ALTER TABLE ofertas ADD COLUMN {col} {tipo}")
 
     @contextlib.contextmanager
     def _c(self):
@@ -157,6 +162,19 @@ class DB:
             return [self._dict(r) for r in c.execute(
                 "SELECT id, titulo, empresa, lugar, modalidad, busqueda, fecha_pub, descripcion, sueldo_txt, seniority, "
                 "tipo_empleo, candidatos, score, nivel FROM ofertas WHERE estado != 'descartada'")]
+
+    def logo_de_empresa(self, empresa):
+        """Logo ya descargado para esa empresa (no se baja dos veces el mismo)."""
+        with self._c() as c:
+            r = c.execute("SELECT logo FROM ofertas WHERE empresa=? AND logo IS NOT NULL AND logo!='' LIMIT 1",
+                          (empresa,)).fetchone()
+            return r["logo"] if r else None
+
+    def sin_logo(self, uid):
+        """id de una oferta ya guardada que aún no tiene logo (para completarlo al volver a verla)."""
+        with self._c() as c:
+            r = c.execute("SELECT id FROM ofertas WHERE uid=? AND (logo IS NULL OR logo='')", (uid,)).fetchone()
+            return r["id"] if r else None
 
     def pendientes_cv(self):
         with self._c() as c:

@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.drawable.Icon
 import android.net.Uri
@@ -59,7 +60,7 @@ object Avisos {
     private fun txt(o: JSONObject, k: String) = o.optString(k).takeIf { it.isNotBlank() && it != "null" }
 
     /** "🔵 92 · Backend Developer Java" / "Empresa · Remoto · 42–50k €" con el desglose al desplegar. */
-    fun oferta(ctx: Context, o: JSONObject) {
+    fun oferta(ctx: Context, o: JSONObject, logo: Bitmap? = null) {
         val id = o.getLong("id")
         val nivel = o.optString("nivel")
         val canal = when (nivel) {
@@ -97,6 +98,7 @@ object Avisos {
         val b = Notification.Builder(ctx, canal)
             .setSmallIcon(R.drawable.ic_stat)
             .setColor(Color.parseColor(color))
+            .setLargeIcon(logo)  // logo de la empresa (null = sin icono grande)
             .setContentTitle("$emoji ${o.optInt("score")} · ${o.optString("titulo")}")
             .setContentText(linea)
             .setStyle(Notification.BigTextStyle().bigText(cuerpo))

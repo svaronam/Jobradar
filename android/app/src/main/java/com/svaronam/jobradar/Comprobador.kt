@@ -1,6 +1,8 @@
 package com.svaronam.jobradar
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
@@ -43,8 +45,8 @@ class Comprobador(ctx: Context, params: WorkerParameters) : Worker(ctx, params) 
             if (p.ultimoId >= 0 && n > 0) {
                 val lista = (0 until n).map { items!!.getJSONObject(it) }
                 val prioritarias = lista.count { it.optString("nivel") == "prioritaria" }
-                if (n <= 5) lista.forEach { Avisos.oferta(applicationContext, it) }
-                else lista.sortedByDescending { it.optInt("score") }.take(4).forEach { Avisos.oferta(applicationContext, it) }
+                val avisar = if (n <= 5) lista else lista.sortedByDescending { it.optInt("score") }.take(4)
+                avisar.forEach { Avisos.oferta(applicationContext, it, logo(p, it)) }
                 if (n > 1) Avisos.resumen(applicationContext, n, prioritarias)
             }
             // si vinieron 50 (el máximo por consulta) quedan más: avanzamos solo hasta la última recibida
@@ -55,6 +57,24 @@ class Comprobador(ctx: Context, params: WorkerParameters) : Worker(ctx, params) 
         } catch (e: Exception) {
             p.ultimaConsulta = "Sin conexión $ahora · ${e.message ?: e.javaClass.simpleName}"
             Result.success()
+        }
+    }
+
+    /** Logo de la empresa desde la Pi; si no hay o falla, la notificación sale sin él. */
+    private fun logo(p: Prefs, o: JSONObject): Bitmap? {
+        if (o.optString("logo").let { it.isBlank() || it == "null" }) return null
+        return try {
+            val c = URL("${p.servidor}/api/ofertas/${o.getLong("id")}/logo").openConnection() as HttpURLConnection
+            c.connectTimeout = 8000
+            c.readTimeout = 10000
+            if (p.token.isNotBlank()) c.setRequestProperty("X-Token", p.token)
+            try {
+                if (c.responseCode != 200) null else c.inputStream.use { BitmapFactory.decodeStream(it) }
+            } finally {
+                c.disconnect()
+            }
+        } catch (e: Exception) {
+            null
         }
     }
 

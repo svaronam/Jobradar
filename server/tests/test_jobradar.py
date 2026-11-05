@@ -36,6 +36,8 @@ class TestLinkedIn(unittest.TestCase):
         self.assertIn("40.000", t[0]["sueldo_txt"])
         self.assertEqual(t[0]["url"], "https://www.linkedin.com/jobs/view/4051234567/")
         self.assertEqual(t[1]["lugar"], "Santander, Cantabria, España")
+        self.assertTrue(t[0]["logo_url"].startswith("https://media.licdn.com/"))
+        self.assertEqual(t[1]["logo_url"], "")
         self.assertEqual(t[2]["titulo"], "Frontend Developer React")  # tarjeta con otro formato (enlace)
 
     def test_detalle(self):
@@ -300,6 +302,39 @@ class TestCV(unittest.TestCase):
         datos = pdfcv.generar(self.cv)
         self.assertTrue(datos.startswith(b"%PDF"))
         self.assertEqual(datos.count(b"/Type /Page\n") + datos.count(b"/Type /Page "), 1)
+
+
+class TestLogos(unittest.TestCase):
+    def test_logo_una_vez_por_empresa(self):
+        from jobradar import scan, util
+        cfg = cfg_prueba()
+        db = DB(os.path.join(cfg["data_dir"], "t.db"))
+        png = b"\x89PNG\r\n\x1a\n" + b"0" * 100
+        bajadas = []
+        orig = util.bajar
+        util.bajar = lambda url, **k: bajadas.append(url) or png
+        try:
+            a = db.guardar({"uid": "a", "empresa": "Sopra Steria", "nivel": "vigilar"})
+            b = db.guardar({"uid": "b", "empresa": "Sopra Steria", "nivel": "vigilar"})
+            scan.guardar_logo(db, cfg, a, "Sopra Steria", "https://media.licdn.com/x.png")
+            scan.guardar_logo(db, cfg, b, "Sopra Steria", "https://media.licdn.com/y.png")
+        finally:
+            util.bajar = orig
+        self.assertEqual(len(bajadas), 1)
+        self.assertEqual(db.oferta(a)["logo"], db.oferta(b)["logo"])
+        self.assertTrue(db.oferta(a)["logo"].endswith(".png"))
+        self.assertTrue(os.path.exists(os.path.join(cfg["data_dir"], "logos", db.oferta(a)["logo"])))
+
+    def test_migracion_columnas(self):
+        import sqlite3
+        p = os.path.join(tempfile.mkdtemp(), "v1.db")
+        c = sqlite3.connect(p)
+        from jobradar import db as dbmod
+        c.executescript(dbmod.ESQUEMA)  # tabla de la v1.0, sin las columnas de logo
+        c.commit(); c.close()
+        db = DB(p)
+        db.guardar({"uid": "z", "empresa": "X", "logo": "a.png"})
+        self.assertEqual(db.logo_de_empresa("X"), "a.png")
 
 
 class TestDB(unittest.TestCase):

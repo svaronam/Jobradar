@@ -33,7 +33,7 @@ def make_handler(db, cfg):
             self.end_headers()
             self.wfile.write(b)
 
-        def _archivo(self, path, tipo, nombre=None, descargar=False):
+        def _archivo(self, path, tipo, nombre=None, descargar=False, cache=0):
             if not path or not os.path.exists(path):
                 return self._json({"error": "no existe"}, 404)
             with open(path, "rb") as f:
@@ -41,7 +41,7 @@ def make_handler(db, cfg):
             self.send_response(200)
             self.send_header("Content-Type", tipo)
             self.send_header("Content-Length", str(len(b)))
-            self.send_header("Cache-Control", "no-store")
+            self.send_header("Cache-Control", f"private, max-age={cache}" if cache else "no-store")
             if nombre:
                 disp = "attachment" if descargar else "inline"
                 self.send_header("Content-Disposition", f"{disp}; filename=\"{nombre}\"")
@@ -95,6 +95,14 @@ def make_handler(db, cfg):
                     return self._json({"error": "esta oferta aún no tiene CV"}, 404)
                 return self._archivo(os.path.join(cfg["data_dir"], "cvs", o["cv_archivo"]), "application/pdf",
                                      o["cv_archivo"], q1("descargar") == "1")
+            if len(parts) == 4 and parts[:2] == ["api", "ofertas"] and parts[3] == "logo":
+                o = db.oferta(int(parts[2]))
+                if not o or not o.get("logo"):
+                    return self._json({"error": "sin logo"}, 404)
+                ext = o["logo"].rsplit(".", 1)[-1]
+                tipo = {"jpg": "image/jpeg", "png": "image/png", "webp": "image/webp", "gif": "image/gif"}.get(ext)
+                return self._archivo(os.path.join(cfg["data_dir"], "logos", os.path.basename(o["logo"])),
+                                     tipo or "application/octet-stream", cache=7 * 86400)
             if u.path == "/api/nuevas":
                 # la APK guarda el último id que notificó y pregunta por los siguientes que ya tengan su CV listo
                 desde, desde_al = int(q1("desde", "0")), int(q1("desde_alerta", "-1"))
