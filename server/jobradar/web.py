@@ -85,7 +85,7 @@ def make_handler(db, cfg):
             if u.path == "/api/ofertas":
                 return self._json({"items": db.listar(nivel=q1("nivel"), estado=q1("estado"), q=q1("q"),
                                                       modalidad=q1("modalidad"), filtradas=q1("filtradas") == "1",
-                                                      limite=int(q1("limite", 300)))})
+                                                      limite=int(q1("limite", 300)), orden=q1("orden", "puntuacion"))})
             if len(parts) == 3 and parts[:2] == ["api", "ofertas"]:
                 o = db.oferta(int(parts[2]))
                 return self._json(o) if o else self._json({"error": "no existe"}, 404)

@@ -375,6 +375,24 @@ class TestLogos(unittest.TestCase):
         self.assertEqual(db.logo_de_empresa("X"), "a.png")
 
 
+class TestOrden(unittest.TestCase):
+    def test_ordenes(self):
+        db = DB(os.path.join(tempfile.mkdtemp(), "t.db"))
+        db.guardar({"uid": "a", "titulo": "A", "nivel": "vigilar", "score": 50, "modalidad": "hibrido", "km": 44,
+                    "sueldo_max": 40000, "candidatos": 300, "fecha_pub": "2026-11-01"})
+        db.guardar({"uid": "b", "titulo": "B", "nivel": "prioritaria", "score": 90, "modalidad": "remoto",
+                    "candidatos": 10, "fecha_pub": "2026-11-03"})
+        db.guardar({"uid": "c", "titulo": "C", "nivel": "interesante", "score": 70, "modalidad": "presencial", "km": 8,
+                    "sueldo_max": 55000, "fecha_pub": "2026-11-05"})
+        t = lambda o: [x["titulo"] for x in db.listar(orden=o)]  # noqa: E731
+        self.assertEqual(t("puntuacion"), ["B", "C", "A"])
+        self.assertEqual(t("sueldo"), ["C", "A", "B"])        # sin sueldo al final
+        self.assertEqual(t("distancia"), ["B", "C", "A"])     # remoto = 0 km
+        self.assertEqual(t("recientes"), ["C", "B", "A"])
+        self.assertEqual(t("candidatos"), ["B", "A", "C"])    # sin dato al final
+        self.assertEqual(t("inventado"), ["B", "C", "A"])     # orden desconocido -> puntuación
+
+
 class TestDB(unittest.TestCase):
     def test_avisos_no_se_saltan_ofertas_sin_cv(self):
         db = DB(os.path.join(tempfile.mkdtemp(), "t.db"))

@@ -113,8 +113,20 @@ class DB:
             r = c.execute("SELECT * FROM ofertas WHERE id=?", (oid,)).fetchone()
             return self._dict(r) if r else None
 
+    ORDENES = {
+        # las nuevas primero y, dentro, por puntuación (lo de siempre)
+        "puntuacion": "(estado='nueva') DESC, score DESC, id DESC",
+        # sin sueldo publicado al final
+        "sueldo": "(sueldo_max IS NULL) ASC, sueldo_max DESC, sueldo_min DESC, score DESC",
+        # remoto cuenta como 0 km; sin ubicación reconocida al final
+        "distancia": "CASE WHEN modalidad LIKE 'remoto%' THEN 0 WHEN km IS NULL THEN 99999 ELSE km END ASC, score DESC",
+        "recientes": "COALESCE(fecha_pub, '') DESC, id DESC",
+        # menos competencia primero; sin dato al final
+        "candidatos": "(candidatos IS NULL) ASC, candidatos ASC, score DESC",
+    }
+
     def listar(self, nivel=None, estado=None, q=None, modalidad=None, filtradas=False, desde_id=None,
-               solo_listas=False, solo_aviso=False, limite=300):
+               solo_listas=False, solo_aviso=False, limite=300, orden="puntuacion"):
         w, a = [], []
         if nivel:
             ns = nivel.split(",")
@@ -144,7 +156,7 @@ class DB:
         sql = f"SELECT {LISTA_COLS} FROM ofertas"
         if w:
             sql += " WHERE " + " AND ".join(w)
-        sql += " ORDER BY id ASC" if desde_id is not None else " ORDER BY (estado='nueva') DESC, score DESC, id DESC"
+        sql += " ORDER BY " + ("id ASC" if desde_id is not None else self.ORDENES.get(orden, self.ORDENES["puntuacion"]))
         sql += " LIMIT ?"
         a.append(limite)
         with self._c() as c:

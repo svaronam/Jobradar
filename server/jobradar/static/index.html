@@ -152,6 +152,11 @@ textarea.json{font:12px/1.4 ui-monospace,Menlo,Consolas,monospace;height:340px;m
 .tr .x{border:0;background:transparent;color:var(--mute);font-size:16px;cursor:pointer}
 .maxi{position:sticky;top:-16px;background:var(--bg);padding:8px 0;z-index:1;font-size:13.5px;border-bottom:1px solid var(--line)}
 .maxi b{font-variant-numeric:tabular-nums}
+.orden{display:flex;gap:6px;align-items:center;margin:8px 0 0;overflow-x:auto;scrollbar-width:none}
+.orden::-webkit-scrollbar{display:none}
+.orden button{flex:0 0 auto;border:1px solid var(--line);background:transparent;color:var(--mute);border-radius:999px;
+  padding:5px 10px;font-size:12.5px;cursor:pointer;white-space:nowrap}
+.orden button.on{border-color:var(--acc);color:var(--acc);font-weight:700;background:color-mix(in srgb,var(--acc) 10%,transparent)}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--accent);color:var(--on-acc);
   padding:10px 16px;border-radius:12px;font-size:14px;z-index:30;display:none;max-width:90vw}
 </style>
@@ -178,6 +183,12 @@ textarea.json{font:12px/1.4 ui-monospace,Menlo,Consolas,monospace;height:340px;m
           <button data-m="hibrido">Híbrido</button><button data-m="presencial">Presencial</button>
         </div>
         <input type="search" id="q" placeholder="Buscar…">
+      </div>
+      <div class="orden" id="orden" role="group" aria-label="Ordenar">
+        <span class="pas">Ordenar:</span>
+        <button data-o="puntuacion">⭐ Puntuación</button><button data-o="sueldo">💶 Sueldo</button>
+        <button data-o="distancia">📍 Distancia</button><button data-o="recientes">🕑 Recientes</button>
+        <button data-o="candidatos">👥 Menos candidatos</button>
       </div>
     </div>
   </div>
@@ -242,7 +253,8 @@ function abrirFuera(url) {
 const NIV = {prioritaria: ["Prioritaria", "var(--p1)"], interesante: ["Interesante", "var(--p2)"],
              vigilar: ["A vigilar", "var(--p3)"], baja: ["Baja", "var(--p4)"], filtrada: ["Filtrada", "var(--p4)"]};
 const MOD = {remoto: "🏠 Remoto", "remoto?": "🏠 Remoto (pide oficina)", hibrido: "🔀 Híbrido", presencial: "🏢 Presencial"};
-const S = {vista: "ofertas", filtro: "todas", modo: "", q: "", items: [], abiertas: new Set(), est: null};
+const S = {vista: "ofertas", filtro: "todas", modo: "", q: "", items: [], abiertas: new Set(), est: null, orden: "puntuacion"};
+try { S.orden = localStorage.getItem("jr_orden") || "puntuacion"; } catch (e) {}
 const FILTROS = [
   ["todas", "Todas", null], ["nuevas", "Nuevas", null, "var(--acc)"], ["prioritaria", "Prioritarias", "prioritaria", "var(--p1)"],
   ["interesante", "Interesantes", "interesante", "var(--p2)"], ["vigilar", "A vigilar", "vigilar", "var(--p3)"],
@@ -260,6 +272,7 @@ function params() {
   if (f === "todas") p.set("nivel", "prioritaria,interesante,vigilar");
   if (S.modo) p.set("modalidad", S.modo);
   if (S.q) p.set("q", S.q);
+  if (S.orden && S.orden !== "puntuacion") p.set("orden", S.orden);
   return p.toString();
 }
 
@@ -810,6 +823,16 @@ $("#segModo").addEventListener("click", e => {
   const b = e.target.closest("[data-m]"); if (!b) return;
   S.modo = b.dataset.m; document.querySelectorAll("#segModo button").forEach(x => x.classList.toggle("on", x === b)); cargar();
 });
+function pintarOrden() {
+  document.querySelectorAll("#orden [data-o]").forEach(b => b.classList.toggle("on", b.dataset.o === S.orden));
+}
+$("#orden").addEventListener("click", e => {
+  const b = e.target.closest("[data-o]"); if (!b) return;
+  S.orden = b.dataset.o;
+  try { localStorage.setItem("jr_orden", S.orden); } catch (err) {}
+  pintarOrden(); cargar();
+});
+pintarOrden();
 let tq; $("#q").addEventListener("input", e => { clearTimeout(tq); tq = setTimeout(() => { S.q = e.target.value.trim(); cargar(); }, 300); });
 $("#lista").addEventListener("click", e => {
   const b = e.target.closest("[data-a]"); if (!b) return;
