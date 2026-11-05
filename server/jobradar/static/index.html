@@ -3,18 +3,37 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0f1720">
+<meta name="theme-color" content="#0b1118">
 <title>JobRadar</title>
+<script>
+// tema: oscuro por defecto; se cambia en ⚙ Ajustes (se recuerda en este móvil/navegador)
+(function () {
+  let t = "oscuro";
+  try { t = localStorage.getItem("jr_tema") || "oscuro"; } catch (e) {}
+  document.documentElement.dataset.tema = t;
+})();
+</script>
 <style>
 :root{
   --bg:#f4f1ea; --card:#fffdf8; --ink:#1b1f24; --mute:#6b6f76; --line:#e3ddd0;
   --p1:#c2410c; --p2:#b7791f; --p3:#2f6f9f; --p4:#8a8f96; --ok:#2f7d4f; --bad:#b4232c; --acc:#2563eb;
-  --chip:#ece6d9; --accent:#1b1f24;
+  --chip:#ece6d9; --accent:#1b1f24; --on-acc:#f4f1ea; --sombra:0 1px 2px rgba(0,0,0,.06);
+  color-scheme:light;
+}
+/* Oscuro: por defecto, o "como el sistema" con el móvil en modo oscuro */
+:root[data-tema="oscuro"]{
+  --bg:#0b1118; --card:#111a24; --ink:#e6e9ee; --mute:#8e9aa8; --line:#1f2c3a;
+  --p1:#ff8a4c; --p2:#f0b84d; --p3:#6cb2ea; --p4:#728091; --ok:#5fcf8e; --bad:#ff7a85; --acc:#7cb1ff;
+  --chip:#182330; --accent:#3b82f6; --on-acc:#ffffff; --sombra:0 1px 0 rgba(255,255,255,.03), 0 6px 18px rgba(0,0,0,.25);
+  color-scheme:dark;
 }
 @media (prefers-color-scheme: dark){
-  :root{ --bg:#0f1720; --card:#16202b; --ink:#e8e4da; --mute:#97a0ab; --line:#243140;
-    --p1:#f07a3c; --p2:#e2b04a; --p3:#6aa9d8; --p4:#7c8792; --ok:#5fbf86; --bad:#f2777f; --acc:#6ea8fe;
-    --chip:#1e2a37; --accent:#e8e4da; }
+  :root[data-tema="auto"]{
+    --bg:#0b1118; --card:#111a24; --ink:#e6e9ee; --mute:#8e9aa8; --line:#1f2c3a;
+    --p1:#ff8a4c; --p2:#f0b84d; --p3:#6cb2ea; --p4:#728091; --ok:#5fcf8e; --bad:#ff7a85; --acc:#7cb1ff;
+    --chip:#182330; --accent:#3b82f6; --on-acc:#ffffff; --sombra:0 1px 0 rgba(255,255,255,.03), 0 6px 18px rgba(0,0,0,.25);
+    color-scheme:dark;
+  }
 }
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);
@@ -31,7 +50,7 @@ header{position:sticky;top:0;z-index:5;background:var(--bg);padding:12px 16px 8p
 .vistas{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:12px 0 4px}
 .vistas button{border:1px solid var(--line);background:var(--card);color:var(--mute);border-radius:12px;height:42px;
   font-size:15px;font-weight:700;cursor:pointer}
-.vistas button.on{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+.vistas button.on{background:var(--accent);color:var(--on-acc);border-color:var(--accent)}
 .badge{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--p1);
   color:#fff;font-size:12px;font-weight:800;margin-left:6px;vertical-align:1px}
 .stats{display:flex;gap:6px;margin:10px 0 8px;overflow-x:auto;scrollbar-width:none}
@@ -39,7 +58,7 @@ header{position:sticky;top:0;z-index:5;background:var(--bg);padding:12px 16px 8p
 .chip{flex:0 0 auto;border:1px solid transparent;background:var(--chip);color:var(--ink);border-radius:999px;padding:6px 12px;
   font-size:13px;cursor:pointer;white-space:nowrap}
 .chip b{font-variant-numeric:tabular-nums;margin-left:4px}
-.chip.on{background:var(--accent);color:var(--bg)}
+.chip.on{background:var(--accent);color:var(--on-acc)}
 .chip .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:1px}
 .row2{display:flex;gap:6px;align-items:center}
 .seg{display:flex;background:var(--chip);border-radius:10px;padding:3px;flex:0 0 auto}
@@ -55,7 +74,7 @@ main{padding:12px 16px 90px;max-width:780px;margin:0 auto}
 .progreso{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:10px;font-size:13.5px}
 .barra{height:6px;background:var(--line);border-radius:3px;margin-top:6px;overflow:hidden}
 .barra i{display:block;height:100%;background:var(--acc);width:0;transition:width .4s}
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px;
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px;box-shadow:var(--sombra);
   display:grid;grid-template-columns:52px 1fr;gap:12px;transition:outline-color .6s}
 .card.hl{outline:2px solid var(--acc);outline-offset:2px}
 .card.leida{opacity:.82}
@@ -83,7 +102,7 @@ main{padding:12px 16px 90px;max-width:780px;margin:0 auto}
 .acts{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
 .btn{font-size:13px;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:9px;
   padding:6px 10px;text-decoration:none;cursor:pointer;white-space:nowrap;font-family:inherit}
-.btn.pri{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:700}
+.btn.pri{background:var(--accent);color:var(--on-acc);border-color:var(--accent);font-weight:700}
 .btn.cv{border-color:var(--acc);color:var(--acc);font-weight:700}
 .btn.on{background:var(--chip);font-weight:700}
 .btn:disabled{opacity:.5}
@@ -124,7 +143,7 @@ textarea.json{font:12px/1.4 ui-monospace,Menlo,Consolas,monospace;height:340px;m
 .tr .x{border:0;background:transparent;color:var(--mute);font-size:16px;cursor:pointer}
 .maxi{position:sticky;top:-16px;background:var(--bg);padding:8px 0;z-index:1;font-size:13.5px;border-bottom:1px solid var(--line)}
 .maxi b{font-variant-numeric:tabular-nums}
-.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--accent);color:var(--bg);
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--accent);color:var(--on-acc);
   padding:10px 16px;border-radius:12px;font-size:14px;z-index:30;display:none;max-width:90vw}
 </style>
 </head>
@@ -272,6 +291,23 @@ function pintarAvisos() {
   }
   $("#avisos").innerHTML = out.join("");
 }
+
+function esOscuro() {
+  const t = document.documentElement.dataset.tema;
+  return t === "oscuro" || (t === "auto" && matchMedia("(prefers-color-scheme: dark)").matches);
+}
+function ponerTema(t) {
+  document.documentElement.dataset.tema = t;
+  try { localStorage.setItem("jr_tema", t); } catch (e) {}
+  avisarTemaApp();
+}
+function avisarTemaApp() {
+  // la barra de estado del móvil, a juego con la página
+  const oscuro = esOscuro();
+  document.querySelector('meta[name="theme-color"]').content = oscuro ? "#0b1118" : "#f4f1ea";
+  if (ANDROID && Android.tema) Android.tema(oscuro);
+}
+matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", avisarTemaApp);
 
 function proxTxt(ts) {
   if (!ts) return "—";
@@ -469,7 +505,13 @@ async function abrirAjustes() {
   const f = Object.assign({modo: "horas", cada_horas: 3, desde: "08:00", hasta: "22:00", dias: [0, 1, 2, 3, 4, 5, 6]}, a.frecuencia || {});
   const pas = (e.pasadas || []).map(x => `<div>${new Date(x.inicio * 1000).toLocaleString("es", {dateStyle: "short", timeStyle: "short"})}
      · ${x.tarjetas} vistas · ${x.nuevas} nuevas · ${x.cvs || 0} CV${x.error ? ` · <span class="no">${esc(x.error)}</span>` : ""}</div>`).join("") || "Ninguna todavía";
+  const tema = document.documentElement.dataset.tema;
   $("#ajustesIn").innerHTML = `<h2>Ajustes</h2>
+    <label>Tema</label>
+    <div class="seg" id="aTema" style="display:inline-flex">
+      <button data-t="oscuro" class="${tema === "oscuro" ? "on" : ""}">🌙 Oscuro</button>
+      <button data-t="claro" class="${tema === "claro" ? "on" : ""}">☀ Claro</button>
+      <button data-t="auto" class="${tema === "auto" ? "on" : ""}">Como el sistema</button></div>
     <div class="dos">
       <div><label>Sueldo mínimo (€/año)</label><input type="number" id="aMin" value="${p.sueldo_minimo}"></div>
       <div><label>Sueldo objetivo (€/año)</label><input type="number" id="aObj" value="${p.sueldo_objetivo}"></div>
@@ -539,6 +581,11 @@ async function abrirAjustes() {
   };
   $("#ajustesIn").oninput = resumenFrec;
   resumenFrec();
+  $("#aTema").onclick = ev => {
+    const b = ev.target.closest("[data-t]"); if (!b) return;
+    ponerTema(b.dataset.t);
+    $("#aTema").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+  };
   $("#aCerrar").onclick = () => $("#hAjustes").classList.remove("open");
   $("#aBaremo").onclick = () => { $("#hAjustes").classList.remove("open"); abrirBaremo().catch(e => toast(e.message)); };
   if ($("#aApp")) $("#aApp").onclick = () => Android.openSettings();
@@ -754,6 +801,7 @@ async function irAncla() {
   marcarVista(S.items.find(o => o.id === id));
 }
 window.addEventListener("hashchange", irAncla);
+avisarTemaApp();
 if (location.hash === "#cv") vista("cv");
 cargar().then(() => { irAncla(); if (S.est && S.est.pasada && S.est.pasada.en_curso) vigilarPasada(); });
 </script>

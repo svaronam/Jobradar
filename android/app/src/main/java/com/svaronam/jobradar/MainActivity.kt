@@ -6,10 +6,12 @@ import android.app.AlertDialog
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.text.InputType
+import android.view.View
 import android.view.ViewGroup
 import android.webkit.JavascriptInterface
 import android.webkit.ValueCallback
@@ -51,7 +53,9 @@ class MainActivity : Activity() {
             webViewClient = Cliente()
             webChromeClient = Chrome()
         }
+        web.setBackgroundColor(Color.parseColor("#0B1118"))  // sin destello blanco mientras carga
         setContentView(web)
+        barras(true)
 
         if (Build.VERSION.SDK_INT >= 33 &&
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
@@ -134,6 +138,19 @@ class MainActivity : Activity() {
                 }
             }
         }.start()
+    }
+
+    @Suppress("DEPRECATION")
+    private fun barras(oscuro: Boolean) {
+        val color = Color.parseColor(if (oscuro) "#0B1118" else "#F4F1EA")
+        window.statusBarColor = color
+        window.navigationBarColor = color
+        var f = window.decorView.systemUiVisibility
+        f = if (oscuro) f and View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR.inv() else f or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+        if (Build.VERSION.SDK_INT >= 26) {
+            f = if (oscuro) f and View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR.inv() else f or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+        }
+        window.decorView.systemUiVisibility = f
     }
 
     private fun abrirFuera(url: String) {
@@ -272,6 +289,10 @@ class MainActivity : Activity() {
 
         @JavascriptInterface
         fun abrirFuera(url: String) = runOnUiThread { this@MainActivity.abrirFuera(url) }
+
+        /** La web avisa de su tema para poner la barra de estado y la de navegación a juego. */
+        @JavascriptInterface
+        fun tema(oscuro: Boolean) = runOnUiThread { barras(oscuro) }
     }
 
     inner class Cliente : WebViewClient() {
@@ -290,14 +311,14 @@ class MainActivity : Activity() {
     }
 
     private fun paginaInicio() = """
-        <html><body style="font-family:sans-serif;background:#0f1720;color:#e8e4da;padding:28px">
+        <html><body style="font-family:sans-serif;background:#0b1118;color:#e8e4da;padding:28px">
         <h2>Job<span style="color:#6ea8fe">Radar</span></h2>
         <p>Pon la dirección del servidor de tu Raspberry (por Tailscale), p. ej. <b>http://homelab1:8796</b>.</p>
         <button onclick="Android.openSettings()" style="padding:10px 16px;border-radius:10px;border:0">Ajustes</button>
         </body></html>""".trimIndent()
 
     private fun paginaError(msg: String) = """
-        <html><body style="font-family:sans-serif;background:#0f1720;color:#e8e4da;padding:28px">
+        <html><body style="font-family:sans-serif;background:#0b1118;color:#e8e4da;padding:28px">
         <h2>No llego a la Raspberry</h2>
         <p style="opacity:.75">$msg</p>
         <p>Comprueba que Tailscale está activo en el móvil y que el servicio <code>jobradar</code> corre en la Pi.</p>
