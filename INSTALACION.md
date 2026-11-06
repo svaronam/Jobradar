@@ -21,11 +21,16 @@ Cada pasada cruza las **7 palabras clave** (`programador`, `desarrollador`, `dev
 
 **La búsqueda es genérica a propósito.** Da igual el lenguaje o las herramientas que pida la oferta, porque eso lo cubre el CV adaptado: pone delante lo transferible (APIs, microservicios, SQL, batch, testing, arquitectura) sin decir que sabes lo que no sabes. Por eso no se descarta ninguna tecnología, y tu stack solo da **puntos extra**: a igualdad de lo demás, una oferta de Java sale por encima de una de .NET, pero las dos te llegan.
 
-**La modalidad se saca del título y la descripción, no del filtro de la búsqueda.** En zonas pequeñas LinkedIn ignora el filtro híbrido/presencial, y además hay ofertas como «Desarrollador JAVA – REMOTO» que aparecen en la búsqueda de Bilbao. Así queda cada oferta:
-- **Remoto**, si el título dice remoto.
-- **Remoto que pide oficina**, si el título dice hybrid pero salió en la búsqueda remota. Si esa oficina está lejos, se filtra.
-- **Híbrido**, si la descripción habla de días de oficina.
-- **Presencial**, si no dice nada.
+**La modalidad se saca de lo que dice la propia oferta, no del filtro de la búsqueda.** El filtro de remoto de la búsqueda pública de LinkedIn cuela muchas híbridas, y en zonas pequeñas ignora el de híbrido/presencial. Por eso cada oferta se clasifica así:
+- **Remoto**: el título o la descripción lo dicen claro («100% remoto», «full remote», «trabajo en remoto desde…»). Visitas puntuales a la oficina no cuentan.
+- **Híbrido**: habla de modelo híbrido, días de oficina, teletrabajo parcial o «posibilidad de teletrabajo X días». No cuentan «cloud híbrido», «nube híbrida» y parecidos.
+- **Remoto con oficina**: dice remoto y también pide ir a la oficina.
+- **Presencial**: lo dice, o la oferta es de tu zona y no dice nada.
+- **Remoto sin confirmar**: salió en la búsqueda de remoto pero la oferta no dice nada. Se avisa igual, pero suma 15 puntos en vez de 30 (se cambia en ⚖ Baremo).
+
+Las híbridas, presenciales y «remoto con oficina» que quedan a más de 80 km se filtran. El motivo **cita la frase de la oferta**, por ejemplo «Híbrido a ~427 km de Limpias · «…2 días en nuestra oficina de Madrid…»», y lo mismo sale en el desglose de puntos.
+
+Si alguna está mal clasificada, en **Detalle → ¿La modalidad está mal?** la corriges a mano y se repuntúa al momento. Para ver de golpe cómo ha quedado todo lo que salió en la búsqueda de remoto: `python3 run.py modalidades`.
 
 Cuando hay pocas coincidencias, LinkedIn rellena con cualquier cosa (conductores, prensa…). Esas ofertas se descartan por título como «No es un puesto de informática», sin abrirlas.
 

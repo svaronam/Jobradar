@@ -69,8 +69,8 @@ object Avisos {
         return PendingIntent.getActivity(ctx, codigo, i, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }
 
-    private val MODO = mapOf("remoto" to "Remoto", "remoto?" to "Remoto (pide oficina)", "hibrido" to "Híbrido",
-        "presencial" to "Presencial")
+    private val MODO = mapOf("remoto" to "Remoto", "remoto?" to "Remoto (pide oficina)",
+        "remoto_nc" to "Remoto sin confirmar", "hibrido" to "Híbrido", "presencial" to "Presencial")
 
     private fun txt(o: JSONObject, k: String) = o.optString(k).takeIf { it.isNotBlank() && it != "null" }
 

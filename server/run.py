@@ -6,6 +6,7 @@
   python3 run.py probar ["palabras"]       enseña lo que ve en LinkedIn y cómo lo puntuaría, sin guardar nada
   python3 run.py probar --rapida           lo mismo con la búsqueda del barrido rápido (palabras con OR)
   python3 run.py cv <id_oferta>            vuelve a generar el CV adaptado de una oferta
+  python3 run.py modalidades               cómo ha clasificado cada oferta (remoto, híbrido...) y por qué, sin pedir nada
   python3 run.py logos                     pone el logo a las ofertas guardadas que no lo tienen
   python3 run.py demo                      mete ofertas de ejemplo para ver la web/app sin esperar
 """
@@ -35,6 +36,7 @@ def main():
     c.add_argument("id", type=int)
     sub.add_parser("demo")
     sub.add_parser("logos")
+    sub.add_parser("modalidades")
     a = ap.parse_args()
 
     cfg = config.cargar(BASE)
@@ -53,6 +55,8 @@ def main():
         print(cv.adaptar(db, cfg, a.id))
     elif a.cmd == "demo":
         demo(db, cfg)
+    elif a.cmd == "modalidades":
+        modalidades(db, cfg)
     elif a.cmd == "logos":
         n = scan.completar_logos(db, cfg, limite=500, salida=print)
         print(f"\n{n} ofertas con logo. Si salen todas sin logo, pásame data/debug/detalle_sin_logo.html")
@@ -99,6 +103,21 @@ def probar(cfg, palabras, n_detalle):
     for modo, est, n in resumen:
         aviso = "   <-- 0: o no hay ofertas o el lector falla (mira data/debug/)" if est == "OK" and n == 0 else ""
         print(f"  {modo['nombre']:10} {modo['location'][:30]:30} {est:5} {n:3} ofertas{aviso}")
+
+
+def modalidades(db, cfg):
+    """Repuntúa con el detector actual y enseña, de las ofertas que salieron en la búsqueda de remoto, qué es cada una."""
+    print("Repuntuando:", puntuar.recalcular(db, cfg))
+    filas = [o for o in db.para_recalcular() if puntuar._pista(o) == "remoto" and o.get("descripcion")]
+    cuenta = {}
+    for o in sorted(filas, key=lambda x: (x["modalidad"] or "", -x["score"])):
+        m, motivo = puntuar.detectar_modalidad("remoto", o["descripcion"], o["titulo"], o.get("tipo_lugar") or "",
+                                               o.get("modalidad_manual") or "")
+        cuenta[m] = cuenta.get(m, 0) + 1
+        print(f"{puntuar.ETIQ_MOD.get(m, m):22} {o['score']:3} {('FILTRADA ' if o['nivel'] == 'filtrada' else '')}"
+              f"{o['titulo'][:40]:40} {o['empresa'][:18]:18} {motivo[:80]}")
+    print("\nDe las que salieron como remoto:", ", ".join(f"{puntuar.ETIQ_MOD.get(k, k)} {v}" for k, v in cuenta.items()))
+    print("Si alguna está mal clasificada, corrígela en la app (Detalle → ¿La modalidad está mal?) y pásame el texto.")
 
 
 DEMO = [

@@ -277,7 +277,8 @@ function abrirFuera(url) {
 // ----------------------------------------------------------------- estado
 const NIV = {prioritaria: ["Prioritaria", "var(--p1)"], interesante: ["Interesante", "var(--p2)"],
              vigilar: ["A vigilar", "var(--p3)"], baja: ["Baja", "var(--p4)"], filtrada: ["Filtrada", "var(--p4)"]};
-const MOD = {remoto: "🏠 Remoto", "remoto?": "🏠 Remoto (pide oficina)", hibrido: "🔀 Híbrido", presencial: "🏢 Presencial"};
+const MOD = {remoto: "🏠 Remoto", "remoto?": "🏠 Remoto (pide oficina)", remoto_nc: "🏠? Remoto sin confirmar",
+             hibrido: "🔀 Híbrido", presencial: "🏢 Presencial"};
 const S = {vista: "ofertas", filtro: "todas", modo: "", q: "", items: [], abiertas: new Set(), est: null, orden: "puntuacion"};
 try { S.orden = localStorage.getItem("jr_orden") || "puntuacion"; } catch (e) {}
 const FILTROS = [
@@ -450,6 +451,10 @@ function tarjeta(o) {
         ${o.cv_error ? `<h4>Error al crear el CV</h4><div class="filtro">${esc(o.cv_error)}</div>` : ""}
         ${o.cv_estado === "ok" ? `<div class="acts"><button class="btn" data-a="rehacercv">↻ Rehacer CV</button>
           <button class="btn" data-a="rehacercv" data-idioma="${o.cv_idioma === "en" ? "es" : "en"}">Rehacer en ${o.cv_idioma === "en" ? "español" : "inglés"}</button></div>` : ""}
+        <h4>¿La modalidad está mal?${o.modalidad_manual ? " <span class='meta'>· corregida a mano</span>" : ""}</h4>
+        <div class="acts" style="margin-top:0">${["remoto", "hibrido", "presencial"].map(m =>
+          `<button class="btn ${o.modalidad_manual === m ? "on" : ""}" data-a="modal" data-m="${m}">${MOD[m]}</button>`).join("")}
+          ${o.modalidad_manual ? `<button class="btn" data-a="modal" data-m="">Quitar corrección</button>` : ""}</div>
         <h4>Descripción</h4><div class="desc" data-desc>Cargando…</div>
       </div>
     </div>
@@ -486,6 +491,16 @@ async function accion(id, a, btn) {
     cargarDesc(id); marcarVista(o); return;
   }
   if (a === "linkedin") { marcarVista(o); abrirFuera(o.url); return; }
+  if (a === "modal") {
+    try {
+      const r = await api(`/api/ofertas/${id}/modalidad`, {json: {modalidad: btn.dataset.m || null}});
+      Object.assign(o, r.oferta);
+      $("#oferta-" + id).outerHTML = tarjeta(o); cargarDesc(id);
+      toast(o.nivel === "filtrada" ? `Corregida: ahora queda filtrada (${o.filtro})` : `Corregida: ${o.score} puntos`, 4500);
+      refrescarEstado();
+    } catch (e) { toast(e.message, 5000); }
+    return;
+  }
   if (a === "vercv") { marcarVista(o); abrirPdf(`/api/ofertas/${id}/cv.pdf`, o.cv_archivo); return; }
   if (a === "compartircv") { compartirPdf(`/api/ofertas/${id}/cv.pdf`, o.cv_archivo); return; }
   if (a === "hacercv" || a === "rehacercv") {
@@ -728,6 +743,7 @@ $("#hAjustes").addEventListener("click", e => { if (e.target.id === "hAjustes") 
 const ETQ = {
   remoto: ["Remoto (toda España)"],
   remoto_con_oficina: ["«Remoto» que pide ir a la oficina", "se suma a los puntos de remoto"],
+  remoto_sin_confirmar: ["Remoto sin confirmar", "salió en la búsqueda de remoto pero la oferta no lo dice"],
   "rol.backend": ["Backend"], "rol.java": ["Desarrollo Java"], "rol.analista_programador": ["Analista programador"],
   "rol.analista_funcional": ["Analista", "funcional, de negocio, de sistemas…"], "rol.fullstack": ["Full stack"],
   "rol.desarrollador": ["Desarrollo genérico", "developer, ingeniero de software… sin decir lenguaje"],
@@ -744,7 +760,7 @@ const ETQ = {
 };
 const GRUPOS = [
   ["Modalidad y distancia", "Las híbridas y presenciales más allá del último tramo (o de tu radio en Ajustes) se filtran.",
-   ["remoto", "#tramos:hibrido:Híbrido", "#tramos:presencial:Presencial", "remoto_con_oficina"]],
+   ["remoto", "remoto_sin_confirmar", "#tramos:hibrido:Híbrido", "#tramos:presencial:Presencial", "remoto_con_oficina"]],
   ["Tipo de puesto", "Según el título de la oferta.", ["rol.*"]],
   ["Extra: encaje con tu stack", "Puntos extra por cada tecnología de tu CV que pida la oferta. Lo que no tengas no resta: lo cubre el CV adaptado.", ["stack_max", "stack.*", "lenguaje_ajeno"]],
   ["Experiencia que piden", "", ["experiencia.*"]],

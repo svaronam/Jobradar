@@ -89,7 +89,7 @@ class TestPuntuar(unittest.TestCase):
 
     def oferta(self, **k):
         o = {"titulo": "Backend Developer Java", "empresa": "X", "lugar": "España", "modo": "remoto",
-             "descripcion": "Java, Spring Boot, microservicios, APIs REST, PostgreSQL. 4 años de experiencia.",
+             "descripcion": "Java, Spring Boot, microservicios, APIs REST, PostgreSQL. 4 años de experiencia. 100% remoto.",
              "fecha_pub": "2000-01-01"}
         o.update(k)
         return puntuar.puntuar(o, self.cfg)
@@ -101,26 +101,37 @@ class TestPuntuar(unittest.TestCase):
         self.assertEqual((p["sueldo_min"], p["sueldo_max"]), (45000, 50000))
 
     def test_hibrido_fuera_de_zona(self):
-        p = self.oferta(modo="hibrido", lugar="Madrid, Comunidad de Madrid, España")
+        p = self.oferta(modo="zona", lugar="Madrid, Comunidad de Madrid, España", descripcion="Java. Modelo híbrido.")
         self.assertEqual(p["nivel"], "filtrada")
         self.assertIn("km", p["filtro"])
 
     def test_hibrido_en_zona(self):
-        p = self.oferta(modo="hibrido", lugar="Santander, Cantabria, España")
+        p = self.oferta(modo="zona", lugar="Santander, Cantabria, España", descripcion="Java. Modelo híbrido.")
         self.assertFalse(p["filtro"])
         self.assertTrue(any("Híbrido" in c for c, _ in p["desglose"]))
 
     def test_remoto_que_pide_oficina(self):
         p = self.oferta(lugar="Madrid, España", descripcion="Java Spring. Tendrás que venir 2 días a la semana a nuestra oficina.")
-        self.assertEqual(p["modalidad"], "remoto?")
+        self.assertEqual(p["modalidad"], "hibrido")  # salió en remoto, pero la oferta pide oficina
         self.assertEqual(p["nivel"], "filtrada")
+        self.assertIn("2 días a la semana", p["filtro"])  # el motivo cita la oferta
 
     def test_modalidad_por_texto(self):
         self.assertEqual(self.oferta(titulo="Desarrollador JAVA - REMOTO", modo="zona", lugar="Bilbao")["modalidad"], "remoto")
         p = self.oferta(titulo="Java Backend Developer - Hybrid", modo="remoto", lugar="Málaga, España")
-        self.assertEqual(p["modalidad"], "remoto?")
+        self.assertEqual(p["modalidad"], "hibrido")
+        self.assertEqual(p["nivel"], "filtrada")
+        nc = self.oferta(descripcion="Java, Spring Boot.")
+        self.assertEqual(nc["modalidad"], "remoto_nc")
+        self.assertIn(15, [x for _, x in nc["desglose"]])
+        manual = self.oferta(descripcion="Java, Spring Boot.", modalidad_manual="hibrido", lugar="Madrid")
+        self.assertEqual((manual["modalidad"], manual["nivel"]), ("hibrido", "filtrada"))
+        self.assertEqual(self.oferta(descripcion="Java", tipo_lugar="remoto")["modalidad"], "remoto")
         self.assertEqual(self.oferta(modo="zona", lugar="Santander", descripcion="Java. Modelo híbrido")["modalidad"], "hibrido")
         self.assertEqual(self.oferta(modo="zona", lugar="Santander", descripcion="Java Spring")["modalidad"], "presencial")
+        self.assertEqual(self.oferta(descripcion="Cloud híbrido y nube híbrida en AWS")["modalidad"], "remoto_nc")
+        self.assertEqual(self.oferta(descripcion="Fully remote. Occasional visits to the office once a month.")["modalidad"],
+                         "remoto")
 
     def test_fuera_de_sector(self):
         self.assertTrue(puntuar.prefiltro("Conductor/a AUTÓNOMO C+E con ADR en Cantabria", self.cfg))
@@ -135,7 +146,7 @@ class TestPuntuar(unittest.TestCase):
 
     def test_cualquier_lenguaje(self):
         # el lenguaje da igual: una oferta remota de Node no se filtra ni se penaliza, solo no suma el extra de stack
-        p = self.oferta(titulo="Backend Developer Node.js", descripcion="Node.js, TypeScript, MongoDB")
+        p = self.oferta(titulo="Backend Developer Node.js", descripcion="Node.js, TypeScript, MongoDB. 100% remoto.")
         self.assertFalse(p["filtro"])
         self.assertGreaterEqual(p["score"], 58)
         self.assertNotIn("Lenguaje principal distinto de Java/Python", [c for c, _ in p["desglose"]])
@@ -174,7 +185,7 @@ class TestBaremo(unittest.TestCase):
         nuevo = db.oferta(oid)
         self.assertEqual(r["revisadas"], 1)
         self.assertGreater(nuevo["score"], p["score"])
-        self.assertIn(["Híbrido a ~44 km", 30], nuevo["desglose"])
+        self.assertTrue(any(c.startswith("Híbrido a ~44 km") and x == 30 for c, x in nuevo["desglose"]))
         self.assertEqual(puntuar.pesos(cfg)["sueldo"]["minimo"], puntuar.PESOS["sueldo"]["minimo"])  # lo no tocado sigue de serie
 
     def test_validaciones(self):
@@ -392,6 +403,16 @@ class TestOrden(unittest.TestCase):
         self.assertEqual(t("recientes"), ["C", "B", "A"])
         self.assertEqual(t("candidatos"), ["B", "A", "C"])    # sin dato al final
         self.assertEqual(t("inventado"), ["B", "C", "A"])     # orden desconocido -> puntuación
+
+
+class TestTipoLugar(unittest.TestCase):
+    def test_ficha(self):
+        from bs4 import BeautifulSoup
+        ld = '<script type="application/ld+json">{"@type":"JobPosting","jobLocationType":"TELECOMMUTE"}</script>'
+        self.assertEqual(linkedin.tipo_lugar(BeautifulSoup(ld, "html.parser")), "remoto")
+        cab = '<section class="top-card-layout"><span class="topcard__flavor">Madrid</span><span>Híbrido</span></section>'
+        self.assertEqual(linkedin.tipo_lugar(BeautifulSoup(cab, "html.parser")), "hibrido")
+        self.assertEqual(linkedin.tipo_lugar(BeautifulSoup(leer("detalle.html"), "html.parser")), "")
 
 
 class TestCandidaturas(unittest.TestCase):

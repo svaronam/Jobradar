@@ -41,10 +41,12 @@ FASES = ["aplicada", "entrevista", "prueba", "oferta", "rechazada", "retirada"]
 FASES_ACTIVAS = ["aplicada", "entrevista", "prueba"]  # las que esperan respuesta: llevan recordatorio
 JSON_COLS = ("desglose", "encaje", "cv_cambios")
 COLS_NUEVAS = {"logo_url": "TEXT", "logo": "TEXT",  # logo: archivo en data/logos/
-               "fase": "TEXT", "fase_ts": "REAL"}     # fase de la candidatura y desde cuándo
+               "fase": "TEXT", "fase_ts": "REAL",     # fase de la candidatura y desde cuándo
+               "tipo_lugar": "TEXT",                  # modalidad que trae la ficha de LinkedIn, si la trae
+               "modalidad_manual": "TEXT"}            # corrección a mano desde la app
 LISTA_COLS = ("id, uid, titulo, empresa, lugar, km, modalidad, fecha_pub, url, sueldo_txt, sueldo_min, sueldo_max, "
               "candidatos, seniority, tipo_empleo, anios_pedidos, idioma, rol, score, nivel, desglose, encaje, filtro, "
-              "estado, cv_estado, cv_idioma, cv_archivo, cv_cambios, cv_error, creado, logo, fase, fase_ts")
+              "estado, cv_estado, cv_idioma, cv_archivo, cv_cambios, cv_error, creado, logo, fase, fase_ts, modalidad_manual")
 
 
 class DB:
@@ -187,7 +189,15 @@ class DB:
         with self._c() as c:
             return [self._dict(r) for r in c.execute(
                 "SELECT id, titulo, empresa, lugar, modalidad, busqueda, fecha_pub, descripcion, sueldo_txt, seniority, "
-                "tipo_empleo, candidatos, score, nivel FROM ofertas WHERE estado != 'descartada'")]
+                "tipo_empleo, candidatos, score, nivel, desglose, filtro, tipo_lugar, modalidad_manual "
+                "FROM ofertas WHERE estado != 'descartada'")]
+
+    def para_recalcular_una(self, oid):
+        with self._c() as c:
+            r = c.execute("SELECT id, titulo, empresa, lugar, modalidad, busqueda, fecha_pub, descripcion, sueldo_txt, "
+                          "seniority, tipo_empleo, candidatos, score, nivel, desglose, filtro, tipo_lugar, modalidad_manual "
+                          "FROM ofertas WHERE id=?", (oid,)).fetchone()
+            return self._dict(r) if r else None
 
     def logo_de_empresa(self, empresa):
         """Logo ya descargado para esa empresa (no se baja dos veces el mismo)."""

@@ -183,6 +183,13 @@ def make_handler(db, cfg):
                         elif est != "aplicada" and antes.get("fase") == "aplicada" and len(db.eventos(oid)) <= 1:
                             db.quitar_candidatura(oid)  # desmarcada por error antes de avanzar
                         return self._json({"ok": True, "oferta": db.oferta(oid)})
+                    if parts[3] == "modalidad":
+                        m = self._body().get("modalidad") or None
+                        if m not in (None, "remoto", "hibrido", "presencial"):
+                            return self._json({"error": "modalidad no válida"}, 400)
+                        db.actualizar(oid, modalidad_manual=m or "")
+                        puntuar.repuntuar(db, cfg, db.para_recalcular_una(oid))
+                        return self._json({"ok": True, "oferta": db.oferta(oid)})
                     if parts[3] == "fase":
                         b = self._body()
                         fase = b.get("fase") or None

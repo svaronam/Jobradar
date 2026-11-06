@@ -132,7 +132,33 @@ def parsear_detalle(html):
                 d[campo] = v
                 break
     d["candidatos"] = candidatos(d["candidatos_txt"])
+    d["tipo_lugar"] = tipo_lugar(soup)
     return d
+
+
+TIPOS = {"en remoto": "remoto", "remoto": "remoto", "remote": "remoto", "hibrido": "hibrido", "hybrid": "hibrido",
+         "presencial": "presencial", "on-site": "presencial", "onsite": "presencial", "in situ": "presencial"}
+
+
+def tipo_lugar(soup):
+    """Modalidad que pone LinkedIn en la ficha, si la trae: JSON-LD (TELECOMMUTE) o una etiqueta suelta en la cabecera."""
+    import json
+    for sc in soup.select('script[type="application/ld+json"]'):
+        try:
+            datos = json.loads(sc.string or "{}")
+        except ValueError:
+            continue
+        for x in datos if isinstance(datos, list) else [datos]:
+            if isinstance(x, dict) and "TELECOMMUTE" in json.dumps(x.get("jobLocationType", "")):
+                return "remoto"
+    cab = soup.select_one(".top-card-layout") or soup.select_one(".topcard") or soup
+    for n in cab.select("span, li, div"):
+        if n.find(True):
+            continue
+        t = util.norm(n.get_text(" "))
+        if t in TIPOS:
+            return TIPOS[t]
+    return ""
 
 
 def candidatos(txt):
@@ -161,7 +187,7 @@ def buscar(palabras, modo, start, tpr, debug_dir=None):
     return code, tarjetas
 
 
-def detalle(job_id, debug_dir=None):
+def detalle(job_id, debug_dir=None, muestra=""):
     code, html = util.get(DETALLE.format(id=job_id))
     if code != 200:
         return None
@@ -172,4 +198,7 @@ def detalle(job_id, debug_dir=None):
     if debug_dir and not d["logo_url"] and not os.path.exists(os.path.join(debug_dir, "detalle_sin_logo.html")):
         with open(os.path.join(debug_dir, "detalle_sin_logo.html"), "w", encoding="utf-8") as f:
             f.write(html)  # para ver dónde pone LinkedIn el logo si algún día cambia
+    if debug_dir and muestra and not os.path.exists(os.path.join(debug_dir, f"detalle_{muestra}.html")):
+        with open(os.path.join(debug_dir, f"detalle_{muestra}.html"), "w", encoding="utf-8") as f:
+            f.write(html)  # una ficha de muestra por modo, para revisar qué trae LinkedIn
     return d

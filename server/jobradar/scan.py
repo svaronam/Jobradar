@@ -162,7 +162,7 @@ def _procesar(db, cfg, t, primera, res):
         res["filtradas"] += 1
         return
 
-    d = linkedin.detalle(t["job_id"], cfg["data_dir"] + "/debug") or {}
+    d = linkedin.detalle(t["job_id"], cfg["data_dir"] + "/debug", muestra=t["modo"]) or {}
     util.pausa(cfg)
     o = {**t, **{k: v for k, v in d.items() if v}}
     o["modo"] = t["modo"]
@@ -175,7 +175,7 @@ def _procesar(db, cfg, t, primera, res):
             "km": p["km"], "modalidad": p["modalidad"], "rol": p["rol"], "score": p["score"], "nivel": p["nivel"],
             "desglose": p["desglose"], "encaje": p["encaje"], "filtro": p["filtro"], "idioma": p["idioma"],
             "sueldo_txt": p["sueldo_txt"], "sueldo_min": p["sueldo_min"], "sueldo_max": p["sueldo_max"],
-            "anios_pedidos": p["anios_pedidos"],
+            "anios_pedidos": p["anios_pedidos"], "tipo_lugar": d.get("tipo_lugar") or None,
             "cv_estado": "pendiente" if necesita_cv else "",
             "listo": 0 if necesita_cv else 1}
     oid = db.guardar(fila)
