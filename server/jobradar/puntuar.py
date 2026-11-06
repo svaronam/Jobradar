@@ -125,6 +125,13 @@ RX_HIBRIDO = (r"hibrid[oa]s?|hybrid|"
               r"(acudir|ir|venir|desplazarte|asistir|estar)\s*(a|en)\s*(la|nuestra|nuestras|las)\s*(oficina|sede|instalaciones)|"
               r"on-?site\s*\d|in the office\s*\d|\d\s*x\s*semana|posibilidad de teletrabajo|"
               r"flexibilidad\s*(para|de)\s*teletrabaj|teletrabajo\s*(flexible|\d)")
+# remoto inequívoco (con esto, una mención a la oficina se queda en «remoto con oficina»)
+RX_REMOTO_FUERTE = (r"100\s*%\s*(en\s*)?(remoto|remote|teletrabajo|telematico)|full[- ]?remote|fully[- ]remote|"
+                    r"(totalmente|completamente|integramente)\s*(en\s*)?remot|teletrabajo\s*(total|completo|al 100)|"
+                    r"remote[- ]first|(remoto|remote)\s*\(?(espana|spain)\)?|sin necesidad de (ir|acudir) a (la )?oficina")
+# beneficios que hablan de remoto sin que el puesto lo sea («10 days per year working remotely from abroad»)
+RX_BENEFICIO = (r"per year|al ano|por ano|a year|abroad|extranjero|workation|vacacion|holiday|"
+                r"semanas? (al|por) ano|weeks? (per|a) year|desde otro pais|from another country|verano|summer")
 RX_PRESENCIAL = (r"100\s*%\s*presencial|totalmente presencial|"
                  r"(modalidad|trabajo|puesto|posicion|jornada)\s*(de trabajo\s*)?:?\s*presencial|presencial en|"
                  r"on-?site\s*(role|position|only|work)|fully on-?site|no (se )?(admite|permite|ofrece) teletrabajo|sin teletrabajo")
@@ -172,11 +179,12 @@ def detectar_modalidad(pista, desc, titulo="", tipo_lugar="", manual=""):
     if tit:
         return "hibrido", f"el título: «{titulo}»"
     r_tit = re.search(RX_REMOTO_TIT, norm(titulo)) and not re.search(RX_PRESENCIAL, norm(titulo))
-    rem = f"el título: «{titulo}»" if r_tit else _buscar(RX_REMOTO, desc)
+    fuerte = f"el título: «{titulo}»" if r_tit else _buscar(RX_REMOTO_FUERTE, desc, excluir_cerca=RX_BENEFICIO)
+    rem = fuerte or _buscar(RX_REMOTO, desc, excluir_cerca=RX_BENEFICIO)
     hib = _buscar(RX_HIBRIDO, desc, excluir_cerca=RX_NO_ES + "|" + RX_PUNTUAL)
     pre = _buscar(RX_PRESENCIAL, desc)
-    if rem and hib:
-        return "remoto?", f"dice remoto («{rem.strip('…')[:60]}») pero también «{hib}»"
+    if fuerte and hib:
+        return "remoto?", f"dice remoto («{fuerte.strip('…')[:60]}») pero también «{hib}»"
     if hib:
         return "hibrido", f"«{hib}»"
     if rem:

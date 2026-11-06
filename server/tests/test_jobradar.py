@@ -422,6 +422,16 @@ class TestTipoLugar(unittest.TestCase):
                          {"lugar": "Madrid, Comunidad de Madrid, España", "tipo_lugar": "hibrido"})
         self.assertEqual(linkedin._lugar_y_tipo("Castro-Urdiales, Cantabria", BeautifulSoup("", "html.parser"))["tipo_lugar"], "")
 
+    def test_beneficio_no_es_remoto(self):
+        from jobradar import puntuar as pu
+        d = ("What we offer:\n• Hybrid working model in our Malaga office (3 days per week on-site).\n"
+             "• Gym, lunch and support for transport.\n• Up to 10 days per year working remotely from abroad.")
+        self.assertEqual(pu.detectar_modalidad("remoto", d, "Backend .NET Software Engineer")[0], "hibrido")
+        self.assertEqual(pu.detectar_modalidad("remoto", "Trabajo en remoto. 1 día al mes en la oficina.", "Java")[0], "remoto")
+        self.assertEqual(pu.detectar_modalidad("remoto", "Working remotely with 2 days per week in the office", "Java")[0],
+                         "hibrido")  # remoto débil + días de oficina = híbrido
+        self.assertEqual(pu.detectar_modalidad("remoto", "100% remoto, con 1 día a la semana en oficina", "Java")[0], "remoto?")
+
     def test_etiqueta_manda(self):
         from jobradar import puntuar as pu
         # la ficha dice Presencial aunque salió en la búsqueda de remoto y la descripción no dice nada
