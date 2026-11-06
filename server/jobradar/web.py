@@ -335,8 +335,9 @@ def servir(db, cfg):
         time.sleep(90)  # después de la posible pasada de arranque
         try:
             scan.completar_logos(db, cfg)
+            scan.completar_tipos(db, cfg)
         except Exception:  # noqa: BLE001
-            log.exception("No se pudieron completar los logos")
+            log.exception("No se pudieron completar los logos o las modalidades")
     threading.Thread(target=logos, daemon=True).start()
     srv = ThreadingHTTPServer((cfg["host"], int(cfg["puerto"])), make_handler(db, cfg))
     log.info("JobRadar %s escuchando en http://%s:%s", VERSION, cfg["host"], cfg["puerto"])

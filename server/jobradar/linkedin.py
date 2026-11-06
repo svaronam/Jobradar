@@ -72,6 +72,24 @@ def _logo(raiz):
     return ""
 
 
+TIPOS = {"en remoto": "remoto", "remoto": "remoto", "remote": "remoto", "hibrido": "hibrido", "hybrid": "hibrido",
+         "presencial": "presencial", "on-site": "presencial", "onsite": "presencial", "in situ": "presencial",
+         "en la oficina": "presencial"}
+RX_TIPO_PAREN = r"\s*[\(·|-]\s*(en remoto|remoto|remote|h[ií]brido|hybrid|presencial|on-?site|in situ)\s*\)?\s*$"
+
+
+def _lugar_y_tipo(lugar, card):
+    """'Madrid, España (Híbrido)' -> lugar sin la etiqueta + tipo_lugar. Busca también una etiqueta suelta en la tarjeta."""
+    out = {"lugar": lugar, "tipo_lugar": ""}
+    m = re.search(RX_TIPO_PAREN, lugar or "", re.I)
+    if m:
+        out["lugar"] = lugar[:m.start()].strip(" ,")
+        out["tipo_lugar"] = TIPOS.get(util.norm(m.group(1)), "")
+    if not out["tipo_lugar"]:
+        out["tipo_lugar"] = _etiqueta(card)
+    return out
+
+
 def parsear_lista(html):
     """Tarjetas de un trozo del listado. Devuelve lista de dicts."""
     soup = BeautifulSoup(html, "html.parser")
@@ -95,7 +113,7 @@ def parsear_lista(html):
             "job_id": jid,
             "titulo": _txt(tit),
             "empresa": _txt(emp),
-            "lugar": _txt(lug),
+            **_lugar_y_tipo(_txt(lug), c),
             "fecha_pub": (t.get("datetime") if t else "") or "",
             "sueldo_txt": _txt(sal),
             "url": url_oferta(jid),
@@ -136,12 +154,22 @@ def parsear_detalle(html):
     return d
 
 
-TIPOS = {"en remoto": "remoto", "remoto": "remoto", "remote": "remoto", "hibrido": "hibrido", "hybrid": "hibrido",
-         "presencial": "presencial", "on-site": "presencial", "onsite": "presencial", "in situ": "presencial"}
+
+
+def _etiqueta(raiz):
+    """Un elemento cuyo texto propio sea solo la modalidad («En remoto», «Híbrido», «Presencial»)."""
+    for n in raiz.select("span, li, div, p, a, button, figcaption"):
+        if n.find(["span", "li", "div", "p", "a", "button"]):
+            continue
+        t = util.norm(n.get_text(" ")).strip(" ✓·•()")
+        if t in TIPOS:
+            return TIPOS[t]
+    return ""
 
 
 def tipo_lugar(soup):
-    """Modalidad que pone LinkedIn en la ficha, si la trae: JSON-LD (TELECOMMUTE) o una etiqueta suelta en la cabecera."""
+    """Modalidad que pone LinkedIn en la ficha, si la trae: JSON-LD (TELECOMMUTE), una etiqueta suelta en la cabecera
+    o en los criterios del empleo, o entre paréntesis tras la ubicación."""
     import json
     for sc in soup.select('script[type="application/ld+json"]'):
         try:
@@ -151,15 +179,18 @@ def tipo_lugar(soup):
         for x in datos if isinstance(datos, list) else [datos]:
             if isinstance(x, dict) and "TELECOMMUTE" in json.dumps(x.get("jobLocationType", "")):
                 return "remoto"
+    for item in soup.select(".description__job-criteria-item"):  # "Tipo de lugar de trabajo: Híbrido"
+        h = util.norm(item.get_text(" "))
+        if re.search(r"lugar de trabajo|workplace|modalidad", h):
+            for k, v in TIPOS.items():
+                if re.search(r"\b" + re.escape(k) + r"\b", h):
+                    return v
     cab = soup.select_one(".top-card-layout") or soup.select_one(".topcard") or soup
-    for n in cab.select("span, li, div"):
-        if n.find(True):
-            continue
-        t = util.norm(n.get_text(" "))
-        if t in TIPOS:
-            return TIPOS[t]
-    return ""
-
+    for n in cab.select(".topcard__flavor--bullet, .topcard__flavor, .top-card-layout__second-subline span"):
+        m = re.search(RX_TIPO_PAREN, n.get_text(" "), re.I)
+        if m:
+            return TIPOS.get(util.norm(m.group(1)), "")
+    return _etiqueta(cab)
 
 def candidatos(txt):
     t = util.norm(txt)

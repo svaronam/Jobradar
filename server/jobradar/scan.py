@@ -175,7 +175,7 @@ def _procesar(db, cfg, t, primera, res):
             "km": p["km"], "modalidad": p["modalidad"], "rol": p["rol"], "score": p["score"], "nivel": p["nivel"],
             "desglose": p["desglose"], "encaje": p["encaje"], "filtro": p["filtro"], "idioma": p["idioma"],
             "sueldo_txt": p["sueldo_txt"], "sueldo_min": p["sueldo_min"], "sueldo_max": p["sueldo_max"],
-            "anios_pedidos": p["anios_pedidos"], "tipo_lugar": d.get("tipo_lugar") or None,
+            "anios_pedidos": p["anios_pedidos"], "tipo_lugar": o.get("tipo_lugar") or None,
             "cv_estado": "pendiente" if necesita_cv else "",
             "listo": 0 if necesita_cv else 1}
     oid = db.guardar(fila)
@@ -227,3 +227,37 @@ def completar_logos(db, cfg, limite=80, salida=None):
             salida(f"  {'✓' if ok else '·'} {o['empresa'][:30]:30} {'' if ok else 'sin logo en LinkedIn'}")
     log.info("Logos completados: %d (peticiones a LinkedIn: %d)", hechos, pedidas)
     return hechos
+
+
+def completar_tipos(db, cfg, limite=80, salida=None):
+    """Lee la etiqueta de modalidad de LinkedIn («En remoto», «Híbrido», «Presencial») de las ofertas guardadas
+    que no la tienen y las repuntúa. Si en las primeras 5 no viene ninguna, para: la ficha pública no la trae."""
+    from . import puntuar
+    vistos, con_tipo, cambian = 0, 0, 0
+    for o in db.faltan_tipos(limite):
+        if estado["en_curso"]:
+            break
+        try:
+            d = linkedin.detalle(o["uid"][3:], cfg["data_dir"] + "/debug", muestra="completar") or {}
+        except Bloqueado:
+            log.warning("LinkedIn limita: dejo las modalidades para luego")
+            break
+        except Exception:  # noqa: BLE001
+            d = {}
+        vistos += 1
+        tipo = d.get("tipo_lugar") or ""
+        con_tipo += bool(tipo)
+        db.actualizar(o["id"], tipo_lugar=tipo or "-")  # "-" = mirado y no viene
+        if not o.get("logo") and d.get("logo_url"):
+            guardar_logo(db, cfg, o["id"], o["empresa"], d["logo_url"])
+        if tipo:
+            antes = db.para_recalcular_una(o["id"])
+            cambian += puntuar.repuntuar(db, cfg, antes)
+        if salida:
+            salida(f"  {(tipo or '-'):10} {o['empresa'][:30]}")
+        if vistos >= 5 and not con_tipo:
+            log.info("La ficha pública de LinkedIn no trae la modalidad: me quedo con el texto de la oferta")
+            break
+        util.pausa(cfg)
+    log.info("Modalidades de LinkedIn: %d de %d fichas la traen, %d ofertas cambian de nivel", con_tipo, vistos, cambian)
+    return {"vistas": vistos, "con_etiqueta": con_tipo, "cambian_nivel": cambian}

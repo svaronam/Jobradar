@@ -413,6 +413,26 @@ class TestTipoLugar(unittest.TestCase):
         cab = '<section class="top-card-layout"><span class="topcard__flavor">Madrid</span><span>Híbrido</span></section>'
         self.assertEqual(linkedin.tipo_lugar(BeautifulSoup(cab, "html.parser")), "hibrido")
         self.assertEqual(linkedin.tipo_lugar(BeautifulSoup(leer("detalle.html"), "html.parser")), "")
+        chip = '<section class="top-card-layout"><button><span>✓ En remoto</span></button><span>Jornada completa</span></section>'
+        self.assertEqual(linkedin.tipo_lugar(BeautifulSoup(chip, "html.parser")), "remoto")
+        crit = ('<ul><li class="description__job-criteria-item"><h3>Tipo de lugar de trabajo</h3>'
+                '<span>Presencial</span></li></ul>')
+        self.assertEqual(linkedin.tipo_lugar(BeautifulSoup(crit, "html.parser")), "presencial")
+        self.assertEqual(linkedin._lugar_y_tipo("Madrid, Comunidad de Madrid, España (Híbrido)", BeautifulSoup("", "html.parser")),
+                         {"lugar": "Madrid, Comunidad de Madrid, España", "tipo_lugar": "hibrido"})
+        self.assertEqual(linkedin._lugar_y_tipo("Castro-Urdiales, Cantabria", BeautifulSoup("", "html.parser"))["tipo_lugar"], "")
+
+    def test_etiqueta_manda(self):
+        from jobradar import puntuar as pu
+        # la ficha dice Presencial aunque salió en la búsqueda de remoto y la descripción no dice nada
+        m, motivo = pu.detectar_modalidad("remoto", "Java Spring", "Desarrollador/a Java Sr", "presencial")
+        self.assertEqual((m, motivo), ("presencial", "LinkedIn: «Presencial»"))
+        self.assertEqual(pu.detectar_modalidad("remoto", "modelo híbrido", "Java", "remoto")[0], "remoto")
+        cfg = cfg_prueba()
+        p = pu.puntuar({"titulo": "Desarrollador Java", "lugar": "Santander, Cantabria, España", "modo": "zona",
+                        "descripcion": "Java", "tipo_lugar": "presencial"}, cfg)
+        self.assertFalse(p["filtro"])
+        self.assertIn(p["nivel"], ("vigilar", "interesante", "prioritaria"))  # presencial en tu zona: te llega
 
 
 class TestCandidaturas(unittest.TestCase):

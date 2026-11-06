@@ -21,6 +21,8 @@ Cada pasada cruza las **7 palabras clave** (`programador`, `desarrollador`, `dev
 
 **La búsqueda es genérica a propósito.** Da igual el lenguaje o las herramientas que pida la oferta, porque eso lo cubre el CV adaptado: pone delante lo transferible (APIs, microservicios, SQL, batch, testing, arquitectura) sin decir que sabes lo que no sabes. Por eso no se descarta ninguna tecnología, y tu stack solo da **puntos extra**: a igualdad de lo demás, una oferta de Java sale por encima de una de .NET, pero las dos te llegan.
 
+**Manda la etiqueta de LinkedIn de la propia oferta** («En remoto», «Híbrido», «Presencial»), si la ficha la trae. Si no la trae, se mira el texto de la oferta, nunca solo el filtro de la búsqueda.
+
 **La modalidad se saca de lo que dice la propia oferta, no del filtro de la búsqueda.** El filtro de remoto de la búsqueda pública de LinkedIn cuela muchas híbridas, y en zonas pequeñas ignora el de híbrido/presencial. Por eso cada oferta se clasifica así:
 - **Remoto**: el título o la descripción lo dicen claro («100% remoto», «full remote», «trabajo en remoto desde…»). Visitas puntuales a la oficina no cuentan.
 - **Híbrido**: habla de modelo híbrido, días de oficina, teletrabajo parcial o «posibilidad de teletrabajo X días». No cuentan «cloud híbrido», «nube híbrida» y parecidos.
@@ -29,6 +31,8 @@ Cada pasada cruza las **7 palabras clave** (`programador`, `desarrollador`, `dev
 - **Remoto sin confirmar**: salió en la búsqueda de remoto pero la oferta no dice nada. Se avisa igual, pero suma 15 puntos en vez de 30 (se cambia en ⚖ Baremo).
 
 Las híbridas, presenciales y «remoto con oficina» que quedan a más de 80 km se filtran. El motivo **cita la frase de la oferta**, por ejemplo «Híbrido a ~427 km de Limpias · «…2 días en nuestra oficina de Madrid…»», y lo mismo sale en el desglose de puntos.
+
+Las **presenciales de Cantabria y Bilbao** te llegan como las híbridas: puntúan algo menos que una híbrida a la misma distancia, pero con un puesto que encaje quedan como mínimo en «A vigilar», que se notifica. En tu zona se leen 2 páginas por palabra clave.
 
 Si alguna está mal clasificada, en **Detalle → ¿La modalidad está mal?** la corriges a mano y se repuntúa al momento. Para ver de golpe cómo ha quedado todo lo que salió en la búsqueda de remoto: `python3 run.py modalidades`.
 
@@ -57,7 +61,7 @@ Lee la **búsqueda pública de LinkedIn, sin iniciar sesión**: no usa tu cuenta
 
 | Criterio | Puntos |
 |---|---|
-| **Modalidad y distancia a Limpias** | remoto 30 · híbrido 25 / 22 / 18 / 12 (≤ 20, 40, 60, 80 km) · presencial 18 / 14 / 10 / 5 |
+| **Modalidad y distancia a Limpias** | remoto 30 · híbrido 26 / 24 / 21 / 16 (≤ 20, 40, 60, 80 km) · presencial 23 / 20 / 17 / 12 · remoto sin confirmar 15 |
 | **Puesto** | desarrollo (cualquier lenguaje, backend, frontend, full stack, móvil) y analista 20 · liderazgo o arquitectura 15 · datos 12 · otro 5 |
 | **Experiencia pedida** | hasta 6 años 15 · 7-8 años 8 · más de 8 años 0 · junior 4 · sin indicar 9 |
 | **Sueldo** | ≥ objetivo (45k) 15 · ≥ mínimo (35k) 10 · sin publicar 4 · **por debajo del mínimo −15** |

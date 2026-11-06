@@ -25,8 +25,8 @@ from .util import norm
 
 PESOS = {
     "remoto": 30,
-    "hibrido": [[20, 25], [40, 22], [60, 18], [80, 12]],      # [hasta km, puntos]
-    "presencial": [[20, 18], [40, 14], [60, 10], [80, 5]],
+    "hibrido": [[20, 26], [40, 24], [60, 21], [80, 16]],      # [hasta km, puntos]
+    "presencial": [[20, 23], [40, 20], [60, 17], [80, 12]],   # tu zona: también interesa
     "remoto_con_oficina": -25,
     "remoto_sin_confirmar": 15,  # salió en la búsqueda de remoto pero la oferta no lo dice
     "rol": {"backend": 20, "java": 20, "analista_programador": 20, "analista_funcional": 20, "fullstack": 20,
@@ -166,6 +166,8 @@ def detectar_modalidad(pista, desc, titulo="", tipo_lugar="", manual=""):
     hibrido · presencial"""
     if manual in ("remoto", "hibrido", "presencial"):
         return manual, "corregida a mano"
+    if tipo_lugar in ("remoto", "hibrido", "presencial"):  # la etiqueta de LinkedIn de la propia oferta
+        return tipo_lugar, f"LinkedIn: «{ {'remoto': 'En remoto', 'hibrido': 'Híbrido', 'presencial': 'Presencial'}[tipo_lugar] }»"
     tit = re.search(RX_HIBRIDO, norm(titulo)) and not re.search(RX_NO_ES, norm(titulo))
     if tit:
         return "hibrido", f"el título: «{titulo}»"
@@ -181,9 +183,6 @@ def detectar_modalidad(pista, desc, titulo="", tipo_lugar="", manual=""):
         return "remoto", rem if rem.startswith("el título") else f"«{rem}»"
     if pre:
         return "presencial", f"«{pre}»"
-    # sin nada en el texto: el dato de LinkedIn de la propia oferta (si lo trae) y, si no, la búsqueda
-    if tipo_lugar in ("remoto", "hibrido", "presencial"):
-        return tipo_lugar, "el dato de modalidad de LinkedIn en la oferta"
     if pista == "remoto":
         return "remoto_nc", "salió en la búsqueda de remoto, pero la oferta no dice nada"
     if pista in ("hibrido", "presencial"):  # modos de config antiguos

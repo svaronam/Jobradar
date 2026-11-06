@@ -81,16 +81,18 @@ def probar(cfg, palabras, n_detalle):
         print(f"  HTTP {code} · {len(tarjetas)} ofertas")
         for t in tarjetas[:25]:
             pre = puntuar.prefiltro(t["titulo"], cfg)
-            print(f"  {'·' if pre else ' '} {t['titulo'][:55]:55} {t['empresa'][:24]:24} {t['lugar'][:28]:28} {t['fecha_pub']}"
+            print(f"  {'·' if pre else ' '} {t['titulo'][:50]:50} {t['empresa'][:22]:22} {t['lugar'][:24]:24} "
+                  f"{(t.get('tipo_lugar') or '-')[:10]:10} {t['fecha_pub']}"
                   + (f"  [{pre}]" if pre else ""))
         for t in [t for t in tarjetas if not puntuar.prefiltro(t["titulo"], cfg)][:max(0, n_detalle - abiertas)]:
             util.pausa(cfg)
-            d = linkedin.detalle(t["job_id"], cfg["data_dir"] + "/debug") or {}
+            d = linkedin.detalle(t["job_id"], cfg["data_dir"] + "/debug", muestra="probar_" + modo["nombre"]) or {}
             abiertas += 1
             o = {**t, **{k: v for k, v in d.items() if v}, "modo": modo["nombre"]}
             p = puntuar.puntuar(o, cfg)
             print(f"\n  --> {p['score']} {p['nivel'].upper()} · {o.get('titulo')} · {o.get('empresa')}"
                   f"{' · FILTRADA: ' + p['filtro'] if p['filtro'] else ''}")
+            print(f"      ETIQUETA DE LINKEDIN: {o.get('tipo_lugar') or 'no viene'}  ->  modalidad: {p['modalidad']}")
             print(f"      descripción: {len(d.get('descripcion', ''))} caracteres · nivel: {d.get('seniority') or '?'} · "
                   f"tipo: {d.get('tipo_empleo') or '?'} · candidatos: {d.get('candidatos')} · idioma: {p['idioma']}")
             for concepto, pts in p["desglose"]:
@@ -106,9 +108,11 @@ def probar(cfg, palabras, n_detalle):
 
 
 def modalidades(db, cfg):
-    """Repuntúa con el detector actual y enseña, de las ofertas que salieron en la búsqueda de remoto, qué es cada una."""
+    """Lee la etiqueta de LinkedIn de las guardadas que no la tienen, repuntúa y enseña qué es cada una y por qué."""
+    print("Leyendo la etiqueta de modalidad de LinkedIn en las ofertas guardadas…")
+    print(scan.completar_tipos(db, cfg, limite=200, salida=print))
     print("Repuntuando:", puntuar.recalcular(db, cfg))
-    filas = [o for o in db.para_recalcular() if puntuar._pista(o) == "remoto" and o.get("descripcion")]
+    filas = [o for o in db.para_recalcular() if o.get("descripcion")]
     cuenta = {}
     for o in sorted(filas, key=lambda x: (x["modalidad"] or "", -x["score"])):
         m, motivo = puntuar.detectar_modalidad("remoto", o["descripcion"], o["titulo"], o.get("tipo_lugar") or "",
@@ -116,7 +120,7 @@ def modalidades(db, cfg):
         cuenta[m] = cuenta.get(m, 0) + 1
         print(f"{puntuar.ETIQ_MOD.get(m, m):22} {o['score']:3} {('FILTRADA ' if o['nivel'] == 'filtrada' else '')}"
               f"{o['titulo'][:40]:40} {o['empresa'][:18]:18} {motivo[:80]}")
-    print("\nDe las que salieron como remoto:", ", ".join(f"{puntuar.ETIQ_MOD.get(k, k)} {v}" for k, v in cuenta.items()))
+    print("\nResumen:", ", ".join(f"{puntuar.ETIQ_MOD.get(k, k)} {v}" for k, v in cuenta.items()))
     print("Si alguna está mal clasificada, corrígela en la app (Detalle → ¿La modalidad está mal?) y pásame el texto.")
 
 

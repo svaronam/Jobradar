@@ -213,6 +213,14 @@ class DB:
                 "SELECT id, uid, empresa, logo_url FROM ofertas WHERE (logo IS NULL OR logo='') AND nivel!='filtrada' "
                 "AND estado!='descartada' ORDER BY score DESC LIMIT ?", (limite,))]
 
+    def faltan_tipos(self, limite=80):
+        """Ofertas visibles que aún no se han mirado para leer la etiqueta de modalidad de LinkedIn."""
+        with self._c() as c:
+            return [dict(r) for r in c.execute(
+                "SELECT id, uid, empresa, logo FROM ofertas WHERE tipo_lugar IS NULL AND uid LIKE 'li:%' "
+                "AND estado!='descartada' AND (nivel!='filtrada' OR COALESCE(descripcion,'')!='') "
+                "ORDER BY score DESC LIMIT ?", (limite,))]
+
     def sin_logo(self, uid):
         """id de una oferta ya guardada que aún no tiene logo (para completarlo al volver a verla)."""
         with self._c() as c:

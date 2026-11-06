@@ -24,8 +24,8 @@ DEFAULT = {
         {"nombre": "remoto", "location": "España", "geoId": "105646813", "f_WT": "2", "paginas": 3},
         # tu zona: LinkedIn no distingue bien híbrido/presencial en zonas pequeñas, así que se pide todo lo que no es
         # remoto de una vez y la modalidad se saca del título y la descripción
-        {"nombre": "zona", "location": "Cantabria, España", "f_WT": "1,3", "paginas": 1},
-        {"nombre": "zona", "location": "Bilbao, País Vasco, España", "distance": "25", "f_WT": "1,3", "paginas": 1},
+        {"nombre": "zona", "location": "Cantabria, España", "f_WT": "1,3", "paginas": 2},
+        {"nombre": "zona", "location": "Bilbao, País Vasco, España", "distance": "25", "f_WT": "1,3", "paginas": 2},
     ],
     # cuándo buscar: "horas" = a las horas_pasada · "intervalo" = cada cada_horas entre desde y hasta
     # rapida_min: barrido rápido cada N minutos entre desde y hasta (0 = desactivado)
@@ -96,6 +96,8 @@ EXCLUIR_V1 = ["frontend", "front-end", "front end", "qa ", "tester", "testing", 
               "salesforce", "sap ", "abap", ".net", "c#", "php", "android", "ios ", "becario", "becaria",
               "prácticas", "practicas", "internship", "intern ", "profesor", "formador", "help desk",
               "soporte técnico", "técnico de soporte", "microinformática", "data scientist", "diseñador"]
+MODOS_V2 = [("remoto", "España", "2", 3), ("zona", "Cantabria, España", "1,3", 1),
+            ("zona", "Bilbao, País Vasco, España", "1,3", 1)]
 PALABRAS_V1 = ["java spring", "desarrollador backend java", "backend developer java", "spring boot",
                "analista programador", "analista funcional", "python backend"]
 
@@ -107,7 +109,8 @@ def cargar(base_dir):
     os.makedirs(os.path.join(data, "debug"), exist_ok=True)
     cfg = _merge(DEFAULT, _leer(os.path.join(base_dir, "config.json")))
     cfg = _merge(cfg, _leer(os.path.join(data, "ajustes.json")))
-    if [(m.get("nombre"), m.get("location"), m.get("f_WT")) for m in cfg.get("modos") or []] == MODOS_V1:
+    sig = [(m.get("nombre"), m.get("location"), m.get("f_WT"), m.get("paginas")) for m in cfg.get("modos") or []]
+    if [x[:3] for x in sig] == MODOS_V1 or sig == MODOS_V2:
         cfg["modos"] = copy.deepcopy(DEFAULT["modos"])
     # (también si se guardaron tal cual desde la app: el formulario de Ajustes manda la lista entera)
     if [x.strip() for x in cfg.get("excluir_titulo") or []] == [x.strip() for x in EXCLUIR_V1]:
