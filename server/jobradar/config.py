@@ -49,6 +49,8 @@ DEFAULT = {
                        "soporte técnico", "técnico de soporte", "microinformática", "diseñador", "designer"],
     "excluir_empresas": [],
 
+    # en la búsqueda de remoto, pedir ofertas que digan «remoto»/«remote» (el filtro de LinkedIn cuela híbridas)
+    "remoto_exigir_mencion": True,
     # la ficha pública (sin sesión) no trae «En remoto / Híbrido / Presencial»; si algún día lo trae, poner True
     "leer_etiqueta_linkedin": False,
 
@@ -69,7 +71,8 @@ DEFAULT = {
 
 # lo que se puede cambiar desde la app (se guarda en data/ajustes.json)
 EDITABLES = {"palabras_clave", "horas_pasada", "frecuencia", "perfil", "excluir_titulo", "excluir_empresas", "gemini_api_key",
-             "gemini_model", "cv_desde_score", "notificar_niveles", "pesos", "niveles", "seguimiento_dias", "resumen"}
+             "gemini_model", "cv_desde_score", "notificar_niveles", "pesos", "niveles", "seguimiento_dias", "resumen",
+             "remoto_exigir_mencion"}
 
 
 def _merge(a, b):

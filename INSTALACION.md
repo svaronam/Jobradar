@@ -21,7 +21,9 @@ Cada pasada cruza las **7 palabras clave** (`programador`, `desarrollador`, `dev
 
 **La búsqueda es genérica a propósito.** Da igual el lenguaje o las herramientas que pida la oferta, porque eso lo cubre el CV adaptado: pone delante lo transferible (APIs, microservicios, SQL, batch, testing, arquitectura) sin decir que sabes lo que no sabes. Por eso no se descarta ninguna tecnología, y tu stack solo da **puntos extra**: a igualdad de lo demás, una oferta de Java sale por encima de una de .NET, pero las dos te llegan.
 
-**Manda la etiqueta de LinkedIn de la propia oferta** («En remoto», «Híbrido», «Presencial»), si la ficha la trae. Si no la trae, se mira el texto de la oferta, nunca solo el filtro de la búsqueda.
+**La ficha pública de LinkedIn no trae la etiqueta «En remoto / Híbrido / Presencial»** que ves con tu sesión (comprobado con una ficha real). Por eso:
+- En la búsqueda de remoto se pide que la oferta diga «remoto» o «remote» (`programador remoto`, `software engineer remote`…). Se desactiva en ⚙ Ajustes.
+- La modalidad se saca del título y del texto de la oferta, nunca solo del filtro de la búsqueda.
 
 **La modalidad se saca de lo que dice la propia oferta, no del filtro de la búsqueda.** El filtro de remoto de la búsqueda pública de LinkedIn cuela muchas híbridas, y en zonas pequeñas ignora el de híbrido/presencial. Por eso cada oferta se clasifica así:
 - **Remoto**: el título o la descripción lo dicen claro («100% remoto», «full remote», «trabajo en remoto desde…»). Visitas puntuales a la oficina no cuentan.

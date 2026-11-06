@@ -68,9 +68,9 @@ def probar(cfg, palabras, n_detalle):
     resumen = []
     abiertas = 0
     for modo in cfg["modos"]:
-        print(f"\n===== «{palabras}» · {modo['nombre']} · {modo['location']} =====")
+        print(f"\n===== «{scan.consulta(palabras, modo, cfg)}» · {modo['nombre']} · {modo['location']} =====")
         try:
-            code, tarjetas = linkedin.buscar(palabras, modo, 0, "r604800", cfg["data_dir"] + "/debug")
+            code, tarjetas = linkedin.buscar(scan.consulta(palabras, modo, cfg), modo, 0, "r604800", cfg["data_dir"] + "/debug")
         except util.Bloqueado as e:
             print(f"  BLOQUEADO por LinkedIn ({e}). Espera un rato antes de volver a probar.")
             return

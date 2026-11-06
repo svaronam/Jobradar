@@ -642,6 +642,10 @@ async function abrirAjustes() {
         Para que el aviso llegue en segundos, activa «Avisos al momento» en ${ANDROID ? "«Ajustes de la app»" : "los ajustes de la APK"}.</p>
     </div>
     <label>Palabras clave que busca en LinkedIn (una por línea)</label><textarea id="aKw" rows="6">${esc(lineas(a.palabras_clave))}</textarea>
+    <label style="color:var(--ink)"><input type="checkbox" id="aExigir" ${a.remoto_exigir_mencion !== false ? "checked" : ""}>
+      En remoto, buscar solo ofertas que digan «remoto»/«remote»</label>
+    <div class="pas">El filtro de remoto de LinkedIn cuela híbridas y presenciales, y sin sesión la oferta no dice su modalidad.
+      Así casi no quedan «Remoto sin confirmar»; a cambio se puede escapar alguna remota que no lo diga.</div>
     <label>Crear CV a partir de (puntos)</label><input type="number" id="aCv" value="${a.cv_desde_score}">
     <label>Avisar en el móvil de</label>
     <div class="ck">${["prioritaria", "interesante", "vigilar"].map(n => `<label><input type="checkbox" data-n="${n}" ${nv.includes(n) ? "checked" : ""}> ${NIV[n][0]}</label>`).join("")}</div>
@@ -721,7 +725,7 @@ async function abrirAjustes() {
   async function guardar(silencio) {
     const b = {perfil: {sueldo_minimo: +$("#aMin").value, sueldo_objetivo: +$("#aObj").value,
                anios_experiencia: +$("#aAnios").value, zona_max_km: +$("#aKm").value},
-               palabras_clave: sp($("#aKw").value), horas_pasada: sp($("#aHoras").value).filter(h => /^\d{1,2}:\d{2}$/.test(h)),
+               palabras_clave: sp($("#aKw").value), remoto_exigir_mencion: $("#aExigir").checked, horas_pasada: sp($("#aHoras").value).filter(h => /^\d{1,2}:\d{2}$/.test(h)),
                frecuencia: leerFrec(),
                cv_desde_score: +$("#aCv").value, excluir_titulo: sp($("#aExT").value), excluir_empresas: sp($("#aExE").value),
                notificar_niveles: [...document.querySelectorAll("[data-n]")].filter(x => x.checked).map(x => x.dataset.n),

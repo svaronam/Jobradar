@@ -243,6 +243,17 @@ class TestPlanificador(unittest.TestCase):
             pl.validar({"modo": "horas", "rapida_min": 2, "dias": [0]}, ["09:00"])
         self.assertEqual(pl.validar({"modo": "horas", "rapida_min": 0, "dias": [0]}, ["09:00"])[0]["rapida_min"], 0)
 
+    def test_consulta_remoto(self):
+        from jobradar import scan
+        cfg = cfg_prueba()
+        rem, zona = config.DEFAULT["modos"][0], config.DEFAULT["modos"][1]
+        self.assertEqual(scan.consulta("programador", rem, cfg), "programador remoto")
+        self.assertEqual(scan.consulta("software engineer", rem, cfg), "software engineer remote")
+        self.assertEqual(scan.consulta("programador", zona, cfg), "programador")
+        self.assertEqual(scan.consulta("java remoto", rem, cfg), "java remoto")
+        cfg["remoto_exigir_mencion"] = False
+        self.assertEqual(scan.consulta("programador", rem, cfg), "programador")
+
     def test_pasada_rapida_y_tipo(self):
         from jobradar import scan, util, linkedin
         cfg = cfg_prueba()

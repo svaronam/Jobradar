@@ -2,6 +2,7 @@
 import hashlib
 import logging
 import os
+import re
 import threading
 import time
 
@@ -25,6 +26,17 @@ def _tpr(db):
         return "r604800"
     segundos = int(time.time() - ult) + 7200
     return f"r{min(604800, max(86400, segundos))}"
+
+
+def consulta(kw, modo, cfg, rapida=False):
+    """Texto que se busca en LinkedIn. En remoto, si está activado, se exige que la oferta diga «remoto»/«remote»:
+    el filtro de remoto de la búsqueda pública cuela híbridas y presenciales."""
+    if modo.get("nombre") != "remoto" or not cfg.get("remoto_exigir_mencion", True) or rapida:
+        return kw
+    if re.search(r"\b(remoto|remote|teletrabajo)\b", kw, re.I):
+        return kw
+    ingles = re.search(r"\b(developer|engineer|software|backend developer)\b", kw, re.I)
+    return f"{kw} {'remote' if ingles else 'remoto'}"
 
 
 def palabras_or(palabras):
@@ -71,7 +83,7 @@ def _pasada(db, cfg, tpr, rapida=False):
         for kw, modo in busquedas:
             start = 0
             for _ in range(int(modo.get("paginas", 1))):
-                code, tarjetas = linkedin.buscar(kw, modo, start, tpr, cfg["data_dir"] + "/debug")
+                code, tarjetas = linkedin.buscar(consulta(kw, modo, cfg, rapida), modo, start, tpr, cfg["data_dir"] + "/debug")
                 start += len(tarjetas)
                 res["peticiones"] += 1
                 res["tarjetas"] += len(tarjetas)
