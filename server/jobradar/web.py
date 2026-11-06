@@ -335,7 +335,9 @@ def servir(db, cfg):
         time.sleep(90)  # después de la posible pasada de arranque
         try:
             scan.completar_logos(db, cfg)
-            scan.completar_tipos(db, cfg)
+            # la ficha pública de LinkedIn no trae la modalidad (comprobado nov 2026): solo si se activa
+            if cfg.get("leer_etiqueta_linkedin"):
+                scan.completar_tipos(db, cfg)
         except Exception:  # noqa: BLE001
             log.exception("No se pudieron completar los logos o las modalidades")
     threading.Thread(target=logos, daemon=True).start()

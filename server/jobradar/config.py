@@ -49,6 +49,9 @@ DEFAULT = {
                        "soporte técnico", "técnico de soporte", "microinformática", "diseñador", "designer"],
     "excluir_empresas": [],
 
+    # la ficha pública (sin sesión) no trae «En remoto / Híbrido / Presencial»; si algún día lo trae, poner True
+    "leer_etiqueta_linkedin": False,
+
     "gemini_api_key": "",
     "gemini_model": "gemini-3.8-flash",
     "gemini_fallback_models": ["gemini-3.5-flash", "gemini-2.5-flash"],

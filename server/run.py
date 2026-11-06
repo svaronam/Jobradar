@@ -109,8 +109,9 @@ def probar(cfg, palabras, n_detalle):
 
 def modalidades(db, cfg):
     """Lee la etiqueta de LinkedIn de las guardadas que no la tienen, repuntúa y enseña qué es cada una y por qué."""
-    print("Leyendo la etiqueta de modalidad de LinkedIn en las ofertas guardadas…")
-    print(scan.completar_tipos(db, cfg, limite=200, salida=print))
+    if cfg.get("leer_etiqueta_linkedin"):
+        print("Leyendo la etiqueta de modalidad de LinkedIn en las ofertas guardadas…")
+        print(scan.completar_tipos(db, cfg, limite=200, salida=print))
     print("Repuntuando:", puntuar.recalcular(db, cfg))
     filas = [o for o in db.para_recalcular() if o.get("descripcion")]
     cuenta = {}
