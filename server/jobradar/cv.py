@@ -388,6 +388,17 @@ def _nombre_archivo(cv, o, idioma):
     return f"CV_{nom}_{emp}_{o['id']}_{idioma}.pdf"
 
 
+def marcar_portfolio(cv, oid):
+    """El enlace al portfolio del CV lleva ?cv=<oferta>: si alguien entra desde ese PDF, el aviso de visita dice
+    a qué empresa se lo mandaste. El texto que se ve en el CV no cambia."""
+    pf = dict(cv.get("portfolio") or {})
+    url = pf.get("url") or ""
+    if not url or "cv=" in url:
+        return cv
+    pf["url"] = url + ("&" if "?" in url else "?") + f"cv={oid}"
+    return {**cv, "portfolio": pf}
+
+
 def adaptar(db, cfg, oid, idioma=None):
     o = db.oferta(oid)
     if not o:
@@ -417,6 +428,7 @@ def adaptar(db, cfg, oid, idioma=None):
         nota.append("Sin API key de Gemini: CV adaptado solo reordenando por palabras clave.")
 
     nombre = _nombre_archivo(cv, o, idioma)
+    adaptado = marcar_portfolio(adaptado, oid)
     pdfcv.generar(adaptado, os.path.join(cfg["data_dir"], "cvs", nombre),
                   f"CV {cv.get('nombre', '')} · {o.get('titulo', '')} · {o.get('empresa', '')}")
     with open(os.path.join(cfg["data_dir"], "cvs", nombre[:-4] + ".json"), "w", encoding="utf-8") as f:

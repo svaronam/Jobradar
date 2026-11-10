@@ -7,18 +7,20 @@
   python3 run.py probar --rapida           lo mismo con la búsqueda del barrido rápido (palabras con OR)
   python3 run.py cv <id_oferta>            vuelve a generar el CV adaptado de una oferta
   python3 run.py modalidades               cómo ha clasificado cada oferta (remoto, híbrido...) y por qué, sin pedir nada
+  python3 run.py visitas                   comprueba el contador de visitas del portfolio y te dice la URL para la web
   python3 run.py logos                     pone el logo a las ofertas guardadas que no lo tienen
   python3 run.py demo                      mete ofertas de ejemplo para ver la web/app sin esperar
 """
 import argparse
 import logging
+import time
 import os
 import sys
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BASE)
 
-from jobradar import config, cv, linkedin, puntuar, scan, util, web  # noqa: E402
+from jobradar import config, cv, linkedin, puntuar, scan, util, visitas, web  # noqa: E402
 from jobradar.db import DB  # noqa: E402
 
 
@@ -37,6 +39,7 @@ def main():
     sub.add_parser("demo")
     sub.add_parser("logos")
     sub.add_parser("modalidades")
+    sub.add_parser("visitas")
     a = ap.parse_args()
 
     cfg = config.cargar(BASE)
@@ -57,6 +60,8 @@ def main():
         demo(db, cfg)
     elif a.cmd == "modalidades":
         modalidades(db, cfg)
+    elif a.cmd == "visitas":
+        comprobar_visitas(db, cfg)
     elif a.cmd == "logos":
         n = scan.completar_logos(db, cfg, limite=500, salida=print)
         print(f"\n{n} ofertas con logo. Si salen todas sin logo, pásame data/debug/detalle_sin_logo.html")
@@ -123,6 +128,48 @@ def modalidades(db, cfg):
               f"{o['titulo'][:40]:40} {o['empresa'][:18]:18} {motivo[:80]}")
     print("\nResumen:", ", ".join(f"{puntuar.ETIQ_MOD.get(k, k)} {v}" for k, v in cuenta.items()))
     print("Si alguna está mal clasificada, corrígela en la app (Detalle → ¿La modalidad está mal?) y pásame el texto.")
+
+
+def comprobar_visitas(db, cfg):
+    """Mira si el receptor responde, si Tailscale Funnel lo publica y qué URL hay que poner en el portfolio."""
+    import json as _json
+    import subprocess
+    import urllib.request
+    v = visitas.cfg_vis(cfg)
+    puerto = v["puerto"]
+    print(f"Receptor local: http://127.0.0.1:{puerto}/v (lo arranca el servicio jobradar)")
+    try:
+        req = urllib.request.Request(f"http://127.0.0.1:{puerto}/v", data=b"{}", method="POST",
+                                     headers={"Content-Type": "text/plain"})
+        code = urllib.request.urlopen(req, timeout=5).status
+    except urllib.error.HTTPError as e:
+        code = e.code
+    except Exception as e:  # noqa: BLE001
+        code = None
+        print(f"  ✗ No responde ({e}). ¿Está el servicio en marcha y actualizado? sudo systemctl restart jobradar")
+    if code:
+        print(f"  ✓ Responde (HTTP {code})")
+    try:
+        st = _json.loads(subprocess.run(["tailscale", "status", "--json"], capture_output=True, text=True, timeout=10).stdout)
+        dns = (st.get("Self") or {}).get("DNSName", "").rstrip(".")
+    except Exception:  # noqa: BLE001
+        dns = ""
+    if dns:
+        print(f"\nURL pública para el portfolio:  https://{dns}:8443/v")
+    else:
+        print("\nNo pude leer el nombre de Tailscale (tailscale status). Mira el nombre en https://login.tailscale.com/admin/machines")
+    try:
+        out = subprocess.run(["tailscale", "funnel", "status"], capture_output=True, text=True, timeout=10).stdout
+    except Exception:  # noqa: BLE001
+        out = ""
+    if f"127.0.0.1:{puerto}" in out and "Funnel on" in out:
+        print("  ✓ Tailscale Funnel lo está publicando")
+    else:
+        print(f"  ✗ Funnel no está activo para el receptor. Actívalo con:\n"
+              f"      sudo tailscale funnel --bg --https=8443 http://127.0.0.1:{puerto}")
+    print("\nÚltimas visitas:")
+    for x in visitas.listar(db, 5):
+        print(f"  {time.strftime('%d/%m %H:%M', time.localtime(x['inicio']))}  {x['origen']} · {x['lugar']} · {x['dispositivo']}")
 
 
 DEMO = [

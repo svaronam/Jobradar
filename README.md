@@ -35,6 +35,7 @@ De momento no se postula solo: avisa, prepara el CV y la decisión es mía.
 - **Compara requisitos**: lista lo que pide cada oferta frente a lo que tiene el CV (✅ 🟡 ❌).
 - **Frecuencia configurable**: a horas fijas o cada N horas dentro de una franja, eligiendo los días. Recupera las búsquedas perdidas si la Pi estuvo apagada.
 - **Avisa al móvil** solo cuando el CV de la oferta está listo. La notificación lleva dos botones: *Abrir en LinkedIn* y *Ver CV*.
+- **Avisa de las visitas al portfolio**, con un contador propio sin cookies ni servicios de terceros. La web avisa a la Pi a través de Tailscale Funnel y la notificación dice de dónde llega la visita. Si viene del enlace de un CV adaptado, dice a qué oferta se envió ese CV.
 - **Se autovigila**: si LinkedIn limita las peticiones o cambia su HTML, corta la pasada, guarda la página para depurarla y lanza una alerta.
 
 ## Arquitectura
@@ -50,7 +51,8 @@ De momento no se postula solo: avisa, prepara el CV y la decisión es mía.
         ├─ adaptación del CV + guarda    (cv.py) ── Gemini API
         ├─ PDF del CV                    (pdfcv.py, ReportLab)
         ├─ SQLite                        (db.py)
-        └─ API HTTP + panel web          (web.py, static/)
+        ├─ API HTTP + panel web          (web.py, static/)
+        └─ receptor de visitas /v        (visitas.py) ◄── portfolio (GitHub Pages) vía Tailscale Funnel
                  │  Tailscale (VPN)
                  ▼
           App Android (Kotlin)

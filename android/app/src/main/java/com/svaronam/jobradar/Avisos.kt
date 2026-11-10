@@ -22,6 +22,7 @@ object Avisos {
     const val CANAL_FIJA = "fija"
     const val CANAL_DIA = "resumen_dia"
     const val CANAL_CAND = "candidaturas"
+    const val CANAL_VISITAS = "visitas"
     const val ID_FIJA = 4
 
     fun crearCanales(ctx: Context) {
@@ -44,6 +45,11 @@ object Avisos {
         nm.createNotificationChannel(NotificationChannel(CANAL_CAND, "📋 Candidaturas",
             NotificationManager.IMPORTANCE_DEFAULT).apply {
             description = "Recordatorios cuando una candidatura lleva días sin novedades"
+        })
+        nm.createNotificationChannel(NotificationChannel(CANAL_VISITAS, "👀 Visitas al portfolio",
+            NotificationManager.IMPORTANCE_DEFAULT).apply {
+            description = "Cuando alguien abre tu portfolio (de dónde viene, desde qué CV, qué dispositivo)"
+            enableLights(true); lightColor = Color.parseColor("#16A34A")
         })
         nm.createNotificationChannel(NotificationChannel(CANAL_FIJA, "Avisos al momento (fija)",
             NotificationManager.IMPORTANCE_MIN).apply {
@@ -161,6 +167,7 @@ object Avisos {
         when (a.optString("tipo")) {
             "resumen" -> return resumenDia(ctx, a)
             "seguimiento" -> return recordatorio(ctx, a)
+            "visita" -> return visita(ctx, a)
         }
         val n = Notification.Builder(ctx, CANAL_ESTADO)
             .setSmallIcon(R.drawable.ic_stat)
@@ -210,6 +217,36 @@ object Avisos {
             .setContentIntent(abrirApp(ctx, "candidaturas"))
             .build()
         ctx.getSystemService(NotificationManager::class.java).notify(700000 + a.optInt("oferta_id"), n)
+    }
+
+    /** "👀 Visita al portfolio" / "LinkedIn · España · móvil"; si viene del CV de una oferta, lo dice. */
+    private fun visita(ctx: Context, a: JSONObject) {
+        val d = a.optJSONObject("datos") ?: JSONObject()
+        val oferta = txt(d, "oferta")
+        val vuelve = d.optInt("vuelve", 0)
+        val titulo = when {
+            oferta != null -> "🎯 Han abierto tu portfolio desde un CV"
+            vuelve > 0 -> "👀 Vuelven a mirar tu portfolio"
+            else -> "👀 Visita a tu portfolio"
+        }
+        val cuerpo = buildString {
+            append(a.optString("texto"))
+            if (oferta != null) append("\n📄 CV de: ").append(oferta)
+            txt(d, "navegador")?.let { append("\n").append(it) }
+            txt(d, "pagina")?.let { append("\nPágina: ").append(it) }
+            if (vuelve > 0) append("\nVisita nº ${vuelve + 1} hoy desde la misma red")
+        }
+        val ancla = if (d.optLong("oferta_id", 0) > 0) "oferta-${d.optLong("oferta_id")}" else "visitas"
+        val n = Notification.Builder(ctx, CANAL_VISITAS)
+            .setSmallIcon(R.drawable.ic_stat)
+            .setColor(Color.parseColor("#16A34A"))
+            .setContentTitle(titulo)
+            .setContentText(a.optString("texto"))
+            .setStyle(Notification.BigTextStyle().bigText(cuerpo))
+            .setAutoCancel(true)
+            .setContentIntent(abrirApp(ctx, ancla))
+            .build()
+        ctx.getSystemService(NotificationManager::class.java).notify(600000 + a.optInt("id") % 90000, n)
     }
 
     fun prueba(ctx: Context) {

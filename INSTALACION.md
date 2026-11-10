@@ -137,6 +137,22 @@ Cuando te postules a una oferta, pulsa **✓ Aplicada** en su tarjeta y pasa a l
 
 A las **20:00** te llega una notificación con las **3 mejores ofertas** de las últimas 24 h que aún no has abierto. Si no hay ninguna, no llega nada. La hora, el número de ofertas y si lo quieres se cambian en ⚙ Ajustes, donde también hay un botón para enviar uno de prueba.
 
+## Visitas al portfolio
+
+Cuando alguien abre tu portfolio (svaronam.github.io/portfolio) te llega «👀 Visita a tu portfolio» con de dónde viene (LinkedIn, Google, GitHub, un enlace directo…), el país por la zona horaria del navegador y si es móvil u ordenador. En la pestaña **Visitas** están todas, con las páginas que vio y cuánto tiempo estuvo.
+
+- **Desde un CV adaptado**: el enlace al portfolio de cada CV que genera el bot lleva `?cv=<oferta>`. En el CV se ve el mismo texto que siempre. Si alguien entra desde ese PDF, el aviso dice «🎯 Han abierto tu portfolio desde un CV · CV enviado a CAF» y al tocarlo se abre esa oferta.
+- **Que no te cuente a ti**: en la pestaña Visitas, pulsa **Marcar este navegador como mío** en cada navegador que uses (en el móvil se abre en tu navegador, y en el PC desde el panel). Vale aunque cambie tu IP. Para deshacerlo, abre la web con `#nosoyyo` al final. Si quieres, también puedes poner IPs o redes que no cuenten.
+- **Sin cookies ni servicios externos**: la web manda un aviso a la Pi. La IP no se guarda, solo un resumen cifrado que cambia cada día y sirve para saber si la misma persona vuelve ese día. No avisa de bots y como mucho envía 40 avisos al día.
+- **Cómo llega a la Pi**: JobRadar abre un segundo servidor solo en `127.0.0.1:8797`, que únicamente entiende `/v`. Tailscale Funnel lo publica en internet por HTTPS. El panel y la API siguen siendo solo de tu Tailscale.
+
+Activarlo (una vez, en la Pi):
+```bash
+sudo tailscale funnel --bg --https=8443 http://127.0.0.1:8797
+python3 ~/jobradar/server/run.py visitas     # comprueba todo y te dice la URL que va en la web
+```
+La primera vez, Tailscale puede pedirte que actives Funnel en tu cuenta: te da un enlace, lo abres y aceptas. La URL (`https://homelab1.<tu-tailnet>.ts.net:8443/v`) va en `v.js` del repo del portfolio.
+
 ## 1 · Servidor en homelab1
 
 Usa el puerto **8796**, que no choca con Wallapop (8787), Wallabot (8788) ni pi-agent (8790).

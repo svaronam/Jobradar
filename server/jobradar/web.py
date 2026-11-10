@@ -8,7 +8,7 @@ import time
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from . import config, cv, gemini, planificador, puntuar, scan, seguimiento
+from . import config, cv, gemini, planificador, puntuar, scan, seguimiento, visitas
 from .db import FASES
 
 log = logging.getLogger("jobradar")
@@ -152,6 +152,10 @@ def make_handler(db, cfg):
                 return self._json(config.publico(cfg))
             if u.path == "/api/baremo":
                 return self._json(baremo(cfg))
+            if u.path == "/api/visitas":
+                v = visitas.cfg_vis(cfg)
+                return self._json({"items": visitas.listar(db, int(q1("limite", 100))), "resumen": visitas.resumen(db),
+                                   "ajustes": {k: v[k] for k in ("activo", "notificar", "ignorar_ips", "sitio")}})
             return self._json({"error": "no encontrado"}, 404)
 
         # ---------------------------------------------------- POST
@@ -231,6 +235,8 @@ def make_handler(db, cfg):
                         b.pop("gemini_api_key")  # vacío = no cambiar
                     if "resumen" in b:
                         b["resumen"] = seguimiento.validar_resumen(b["resumen"])
+                    if "visitas" in b:
+                        b["visitas"] = validar_visitas(b["visitas"])
                     if "seguimiento_dias" in b:
                         b["seguimiento_dias"] = max(0, min(60, int(b["seguimiento_dias"] or 0)))
                     if "frecuencia" in b or "horas_pasada" in b:
@@ -254,6 +260,9 @@ def make_handler(db, cfg):
                     if b.get("recalcular", True):
                         res["recalculo"] = puntuar.recalcular(db, cfg)
                     return self._json(res)
+                if u.path == "/api/visitas/borrar":
+                    visitas.borrar(db, int(self._body().get("id") or 0) or None)
+                    return self._json({"ok": True, "resumen": visitas.resumen(db)})
                 if u.path == "/api/gemini/probar":
                     txt = gemini.generar(cfg, "Responde solo con la palabra: funciona", temperature=0)
                     return self._json({"ok": True, "respuesta": txt[:60]})
@@ -277,6 +286,29 @@ def nuevas(db, cfg, desde, desde_al):
     if desde_al >= 0:
         res["alertas"] = db.alertas_desde(desde_al)
     return res
+
+
+def validar_visitas(v):
+    import ipaddress
+    out = {}
+    if not isinstance(v, dict):
+        raise ValueError("Ajustes de visitas no válidos")
+    for k in ("activo", "notificar"):
+        if k in v:
+            out[k] = bool(v[k])
+    if "ignorar_ips" in v:
+        ips = []
+        for x in v["ignorar_ips"] or []:
+            x = str(x).strip()
+            if not x:
+                continue
+            try:
+                ipaddress.ip_network(x, strict=False)
+            except ValueError:
+                raise ValueError(f"«{x}» no es una IP ni una red (ej. 81.40.12.3 o 81.40.0.0/16)") from None
+            ips.append(x)
+        out["ignorar_ips"] = ips[:50]
+    return out
 
 
 def baremo(cfg):
@@ -330,6 +362,7 @@ def servir(db, cfg):
     except Exception:  # noqa: BLE001
         log.exception("No se pudieron repuntuar las ofertas")
     threading.Thread(target=programador, args=(db, cfg), daemon=True).start()
+    visitas.servir(db, cfg)
 
     def logos():
         time.sleep(90)  # después de la posible pasada de arranque

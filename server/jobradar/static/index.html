@@ -47,11 +47,13 @@ header{position:sticky;top:0;z-index:5;background:var(--bg);padding:12px 16px 8p
   padding:0 10px;font-size:14px;cursor:pointer}
 .ibtn.run{color:var(--acc);border-color:var(--acc)}
 .wrap{max-width:780px;margin:0 auto}
-.vistas{display:grid;grid-template-columns:1fr 1.25fr 0.9fr;gap:6px;margin:12px 0 4px}
+.vistas{display:grid;grid-template-columns:1fr 1.35fr .85fr 1fr;gap:5px;margin:12px 0 4px}
 .vistas button{border:1px solid var(--line);background:var(--card);color:var(--mute);border-radius:12px;height:42px;
   font-size:14.5px;font-weight:700;cursor:pointer;white-space:nowrap;padding:0 6px;overflow:hidden;text-overflow:ellipsis}
 .vistas .badge{margin-left:4px}
 .vistas button.on{background:var(--accent);color:var(--on-acc);border-color:var(--accent)}
+.badge[hidden]{display:none!important}
+@media (max-width:440px){.vistas button{font-size:13px;padding:0 3px}.vistas .badge{margin-left:3px}}
 .badge{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--p1);
   color:#fff;font-size:12px;font-weight:800;margin-left:6px;vertical-align:1px}
 .stats{display:flex;gap:6px;margin:10px 0 8px;overflow-x:auto;scrollbar-width:none}
@@ -169,6 +171,17 @@ textarea.json{font:12px/1.4 ui-monospace,Menlo,Consolas,monospace;height:340px;m
 .pipe i{flex:1;height:3px;border-radius:2px;background:var(--line)}
 .pipe i.on{background:var(--acc)}
 .pipe span.on{color:var(--ink);font-weight:700}
+.vis{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:8px;box-shadow:var(--sombra)}
+.vis .t{display:flex;gap:8px;align-items:baseline;justify-content:space-between}
+.vis .o{font-weight:600}
+.vis .m{font-size:13px;color:var(--mute);margin-top:3px}
+.vis .cvo{font-size:13px;margin-top:5px}
+.vgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:4px 0 10px}
+.vgrid div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px;text-align:center}
+.vgrid b{display:block;font-size:20px;font-variant-numeric:tabular-nums}
+.vgrid span{font-size:12px;color:var(--mute)}
+.vaj{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:12px 0}
+.vaj textarea{width:100%;box-sizing:border-box}
 .recuerda{font-size:13px;background:color-mix(in srgb,var(--p2) 14%,transparent);border-radius:9px;padding:7px 10px;margin:6px 0}
 .tl{margin:8px 0 0;padding:0;list-style:none;font-size:13px;border-left:2px solid var(--line)}
 .tl li{position:relative;padding:3px 0 6px 12px}
@@ -198,6 +211,7 @@ textarea.json{font:12px/1.4 ui-monospace,Menlo,Consolas,monospace;height:340px;m
       <button id="vOfertas" class="on">Ofertas<span class="badge" id="nNuevas" hidden></span></button>
       <button id="vCand">Candidaturas<span class="badge" id="nCand" hidden></span></button>
       <button id="vCv">Mi CV</button>
+      <button id="vVis">Visitas<span class="badge" id="nVis" hidden></span></button>
     </div>
     <div id="barraOfertas">
       <div class="stats" id="chips"></div>
@@ -223,6 +237,7 @@ textarea.json{font:12px/1.4 ui-monospace,Menlo,Consolas,monospace;height:340px;m
   <section id="pOfertas"><div id="lista"></div></section>
   <section id="pCand" hidden></section>
   <section id="pCv" hidden></section>
+  <section id="pVis" hidden></section>
 </main>
 
 <div class="hoja" id="hAjustes"><div class="in" id="ajustesIn"></div></div>
@@ -884,6 +899,73 @@ $("#hBaremo").addEventListener("click", e => { if (e.target.id === "hBaremo") e.
 $("#bBaremo").onclick = () => abrirBaremo().catch(e => toast(e.message));
 
 
+// ----------------------------------------------------------------- Visitas al portfolio
+const SV = {items: [], aj: {}};
+const horaVis = ts => new Date(ts * 1000).toLocaleString("es", {weekday: "short", day: "numeric", month: "short",
+                                                                hour: "2-digit", minute: "2-digit"});
+const durVis = s => !s ? "" : s < 60 ? `${s} s` : `${Math.floor(s / 60)} min ${s % 60 ? (s % 60) + " s" : ""}`.trim();
+async function pintarVis() {
+  let r;
+  try { r = await api("/api/visitas"); } catch (e) { $("#pVis").innerHTML = `<div class="vacio">${esc(e.message)}</div>`; return; }
+  SV.items = r.items; SV.aj = r.ajustes;
+  try { localStorage.setItem("jr_vis_vistas", String(r.resumen.total)); } catch (e) {}
+  $("#nVis").hidden = true;
+  const R = r.resumen;
+  const sitio = r.ajustes.sitio || "https://svaronam.github.io/portfolio/";
+  $("#pVis").innerHTML = `
+    <div class="vgrid"><div><b>${R.hoy}</b><span>hoy</span></div><div><b>${R.semana}</b><span>7 días</span></div>
+      <div><b>${R.mes}</b><span>30 días</span></div><div><b>${R.total}</b><span>total</span></div></div>
+    ${R.origenes_mes.length ? `<div class="pas" style="margin-bottom:8px">Este mes: ${R.origenes_mes.map(o => `${esc(o.origen)} <b>${o.n}</b>`).join(" · ")}</div>` : ""}
+    ${SV.items.map(v => `<div class="vis">
+        <div class="t"><span class="o">${esc(v.origen || "Directo")}</span><span class="pas">${horaVis(v.inicio)}</span></div>
+        <div class="m">${[v.lugar, v.dispositivo, v.navegador].filter(Boolean).map(esc).join(" · ")}
+          ${v.segundos ? " · ⏱ " + durVis(v.segundos) : ""}</div>
+        <div class="m">📄 ${v.paginas.map(p => esc(p.replace(/^\/portfolio/, "") || "/")).join(" → ")}</div>
+        ${v.oferta ? `<div class="cvo">🎯 Entró desde el CV que enviaste a <a href="#oferta-${v.oferta.id}">${esc(v.oferta.titulo)} · ${esc(v.oferta.empresa)}</a></div>` : ""}
+        ${v.ref && !/linkedin|google/i.test(v.origen) && v.ref !== "linkedin.com" ? `<div class="m">↩ ${esc(v.ref)}</div>` : ""}
+      </div>`).join("") || `<div class="vacio">Aún no ha entrado nadie al portfolio.<br>Cuando alguien lo abra te llegará un aviso al móvil.</div>`}
+    <div class="vaj">
+      <b>Que no te cuente a ti</b>
+      <div class="pas" style="margin:4px 0 8px">Abre este enlace una vez en cada navegador que uses (móvil, PC…). Desde ese navegador tus visitas dejan de contar, aunque cambie tu IP.</div>
+      <button class="btn pri" id="vYo">Marcar este navegador como mío</button>
+      <button class="btn" id="vCopiar">Copiar el enlace</button>
+      <label style="display:block;margin-top:12px">IPs o redes que no cuentan (una por línea, opcional)</label>
+      <textarea id="vIps" rows="2" placeholder="81.40.12.3">${esc((r.ajustes.ignorar_ips || []).join("\n"))}</textarea>
+      <label style="display:flex;gap:8px;align-items:center;margin-top:8px"><input type="checkbox" id="vNot" ${r.ajustes.notificar ? "checked" : ""}> Avisarme al móvil de cada visita</label>
+      <label style="display:flex;gap:8px;align-items:center;margin-top:4px"><input type="checkbox" id="vAct" ${r.ajustes.activo ? "checked" : ""}> Registrar visitas</label>
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn pri" id="vGuardar">Guardar</button>
+        <button class="btn" id="vBorrar">Borrar el historial</button>
+      </div>
+      <div class="pas" style="margin-top:8px">Sin cookies ni servicios externos: la web avisa a tu Pi. Se guarda de dónde llega, zona horaria e idioma del navegador, dispositivo, páginas y tiempo. La IP no se guarda.</div>
+    </div>`;
+  const enlaceYo = sitio.replace(/#.*$/, "") + "#soyyo";
+  $("#vYo").onclick = () => abrirFuera(enlaceYo);
+  $("#vCopiar").onclick = async () => {
+    try { await navigator.clipboard.writeText(enlaceYo); toast("Copiado: ábrelo en el otro navegador"); }
+    catch (e) { prompt("Copia este enlace:", enlaceYo); }
+  };
+  $("#vGuardar").onclick = async () => {
+    try {
+      await api("/api/ajustes", {json: {visitas: {ignorar_ips: $("#vIps").value.split("\n").map(x => x.trim()).filter(Boolean),
+                                                  notificar: $("#vNot").checked, activo: $("#vAct").checked}}});
+      toast("Guardado");
+    } catch (e) { toast(e.message, 4000); }
+  };
+  $("#vBorrar").onclick = async () => {
+    if (!confirm("¿Borrar todas las visitas guardadas?")) return;
+    try { await api("/api/visitas/borrar", {json: {}}); pintarVis(); } catch (e) { toast(e.message); }
+  };
+}
+async function avisoVisitas() {  // número en la pestaña: visitas nuevas desde la última vez que la abriste
+  try {
+    const r = await api("/api/visitas?limite=1");
+    let vistas = 0; try { vistas = +(localStorage.getItem("jr_vis_vistas") || 0); } catch (e) {}
+    const n = r.resumen.total - vistas;
+    $("#nVis").textContent = n; $("#nVis").hidden = !(n > 0) || S.vista === "vis";
+  } catch (e) {}
+}
+
 // ----------------------------------------------------------------- Candidaturas
 const FASE = {aplicada: "Aplicada", entrevista: "Entrevista", prueba: "Prueba técnica", oferta: "Oferta",
               rechazada: "Rechazada", retirada: "Me retiré"};
@@ -995,13 +1077,16 @@ $("#lista").addEventListener("click", e => {
 });
 function vista(v) {
   S.vista = v;
-  for (const [k, b, p] of [["ofertas", "#vOfertas", "#pOfertas"], ["cand", "#vCand", "#pCand"], ["cv", "#vCv", "#pCv"]]) {
+  for (const [k, b, p] of [["ofertas", "#vOfertas", "#pOfertas"], ["cand", "#vCand", "#pCand"], ["cv", "#vCv", "#pCv"],
+                           ["vis", "#vVis", "#pVis"]]) {
     $(b).classList.toggle("on", v === k); $(p).hidden = v !== k;
   }
   $("#barraOfertas").hidden = v !== "ofertas";
   if (v === "cv") pintarCv();
   if (v === "cand") pintarCand();
+  if (v === "vis") pintarVis();
 }
+$("#vVis").onclick = () => vista("vis");
 $("#vCand").onclick = () => vista("cand");
 $("#vOfertas").onclick = () => vista("ofertas");
 $("#vCv").onclick = () => vista("cv");
@@ -1022,6 +1107,7 @@ function vigilarPasada() {
 async function irAncla() {
   if (location.hash === "#candidaturas") { vista("cand"); return; }
   if (location.hash === "#cv") { vista("cv"); return; }
+  if (location.hash === "#visitas") { vista("vis"); return; }
   const m = location.hash.match(/^#oferta-(\d+)/);
   if (!m) return;
   if (S.vista !== "ofertas") vista("ofertas");
@@ -1042,6 +1128,8 @@ window.addEventListener("hashchange", irAncla);
 avisarTemaApp();
 if (location.hash === "#cv") vista("cv");
 if (location.hash === "#candidaturas") vista("cand");
+if (location.hash === "#visitas") vista("vis");
+avisoVisitas(); setInterval(avisoVisitas, 60000);
 cargar().then(() => { irAncla(); if (S.est && S.est.pasada && S.est.pasada.en_curso) vigilarPasada(); });
 </script>
 </body>

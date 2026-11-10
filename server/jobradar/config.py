@@ -64,6 +64,11 @@ DEFAULT = {
     # resumen diario con las mejores ofertas del día que aún no has abierto
     "resumen": {"activo": True, "hora": "20:00", "n": 3},
 
+    # visitas al portfolio: la web avisa a la Pi (receptor en 127.0.0.1:puerto, publicado con Tailscale Funnel)
+    # sitio: la URL del portfolio · ignorar_ips: IPs o redes que no cuentan (además de marcar tus navegadores)
+    "visitas": {"activo": True, "puerto": 8797, "notificar": True, "ignorar_ips": [],
+                "sitio": "https://svaronam.github.io/portfolio/", "origenes": ["https://svaronam.github.io"]},
+
     "pesos": {},
     "niveles": {"prioritaria": 75, "interesante": 58, "vigilar": 40},
     "notificar_niveles": ["prioritaria", "interesante", "vigilar"],
@@ -72,7 +77,7 @@ DEFAULT = {
 # lo que se puede cambiar desde la app (se guarda en data/ajustes.json)
 EDITABLES = {"palabras_clave", "horas_pasada", "frecuencia", "perfil", "excluir_titulo", "excluir_empresas", "gemini_api_key",
              "gemini_model", "cv_desde_score", "notificar_niveles", "pesos", "niveles", "seguimiento_dias", "resumen",
-             "remoto_exigir_mencion"}
+             "remoto_exigir_mencion", "visitas"}
 
 
 def _merge(a, b):
@@ -137,9 +142,9 @@ def guardar_ajustes(cfg, cambios):
     for k, v in cambios.items():
         if k not in EDITABLES:
             continue
-        if k == "perfil" and isinstance(v, dict):
-            actual["perfil"] = {**actual.get("perfil", {}), **v}
-            cfg["perfil"] = {**cfg["perfil"], **v}
+        if k in ("perfil", "visitas") and isinstance(v, dict):
+            actual[k] = {**actual.get(k, {}), **v}
+            cfg[k] = {**(cfg.get(k) or {}), **v}
         else:
             actual[k] = v
             cfg[k] = v

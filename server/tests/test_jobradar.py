@@ -9,7 +9,7 @@ import unittest
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, BASE)
 
-from jobradar import config, cv, geo, linkedin, puntuar  # noqa: E402
+from jobradar import config, cv, geo, linkedin, puntuar, visitas  # noqa: E402
 from jobradar.db import DB  # noqa: E402
 
 FIX = os.path.join(os.path.dirname(__file__), "fixtures")
@@ -507,6 +507,46 @@ class TestCandidaturas(unittest.TestCase):
         self.assertEqual([o["titulo"] for o in al["datos"]], ["Backend Java", "Otra"])  # la vista no entra
         with self.assertRaises(ValueError):
             seguimiento.validar_resumen({"hora": "25:00"})
+
+
+class TestVisitas(unittest.TestCase):
+    UA = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/130 Mobile Safari/537.36"
+
+    def setUp(self):
+        self.cfg = cfg_prueba()
+        self.db = DB(os.path.join(self.cfg["data_dir"], "t.db"))
+        self.reg = visitas.Registro(self.db, self.cfg)
+
+    def avisos(self):
+        return [a for a in self.db.alertas_desde(0) if a["tipo"] == "visita"]
+
+    def test_una_visita_un_aviso(self):
+        d = {"e": "ver", "s": "sesion12345", "p": "/portfolio/", "ref": "https://www.linkedin.com/", "z": "Europe/Madrid"}
+        self.assertIsNone(self.reg.recibir(d, "1.2.3.4", self.UA))
+        self.reg.recibir({**d, "p": "/portfolio/en/"}, "1.2.3.4", self.UA)
+        self.reg.recibir({"e": "fin", "s": "sesion12345", "t": 80}, "1.2.3.4", self.UA)
+        v = visitas.listar(self.db)
+        self.assertEqual(len(v), 1)
+        self.assertEqual(v[0]["paginas"], ["/portfolio/", "/portfolio/en/"])
+        self.assertEqual(v[0]["segundos"], 80)
+        self.assertEqual(len(self.avisos()), 1)
+        self.assertEqual(self.avisos()[0]["datos"]["origen"], "LinkedIn")
+        self.assertEqual(self.avisos()[0]["datos"]["lugar"], "España")
+
+    def test_bots_e_ips_ignoradas(self):
+        self.cfg["visitas"] = {"ignorar_ips": ["81.40.0.0/16"]}
+        self.assertEqual(self.reg.recibir({"e": "ver", "s": "abcdefgh12"}, "5.5.5.5", "Googlebot/2.1"), "bot")
+        self.assertEqual(self.reg.recibir({"e": "ver", "s": "abcdefgh12"}, "81.40.3.3", self.UA), "ip ignorada")
+        self.assertEqual(visitas.listar(self.db), [])
+
+    def test_desde_cv_de_una_oferta(self):
+        oid = self.db.guardar({"uid": "li:1", "firma": "x", "titulo": "Java Dev", "empresa": "CAF", "listo": 1})
+        self.reg.recibir({"e": "ver", "s": "cvcvcvcv12", "p": "/portfolio/", "cv": str(oid)}, "1.1.1.1", self.UA)
+        a = self.avisos()[0]
+        self.assertEqual(a["datos"]["origen"], "CV enviado a CAF")
+        self.assertEqual(a["oferta_id"], oid)
+        pf = cv.marcar_portfolio({"portfolio": {"url": "https://svaronam.github.io/portfolio/"}}, oid)["portfolio"]["url"]
+        self.assertTrue(pf.endswith(f"?cv={oid}"))
 
 
 class TestDB(unittest.TestCase):
